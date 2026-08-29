@@ -42,16 +42,18 @@ export default function App() {
         )}
         <ul className={styles.list}>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Reviews are never held hostage.</strong> Cancel, downgrade,
+            or let a payment fail — every review you've collected keeps
+            showing. You only lose access to Pro features, never your data.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Full moderation control.</strong> Approve or reject every
+            review before it's visible, with photos on the Pro plan.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Your data, exportable anytime.</strong> One-click CSV
+            export of everything you've collected, on every plan, no
+            restrictions.
           </li>
         </ul>
       </div>
