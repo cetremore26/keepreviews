@@ -15,7 +15,8 @@ database.sqlite
 .env.*
 !.env.example
 
-package-lock.json
+# We use npm — package-lock.json IS committed on purpose (npm ci in CI/
+# Docker needs it). Only the other package managers' lockfiles are ignored.
 yarn.lock
 pnpm-lock.yaml
 
