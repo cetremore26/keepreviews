@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import {
   verifyAppProxySignature,
   getShopDomainFromProxyRequest,
@@ -33,7 +33,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const shop = await getShopByDomain(shopDomain);
   if (!shop) {
-    return Response.json({
+    return json({
       reviews: [],
       averageRating: 0,
       totalApprovedCount: 0,
@@ -44,7 +44,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { reviews, averageRating, totalApprovedCount } =
     await listReviewsForWidget(shop.id, productId, shop.plan);
 
-  return Response.json({
+  return json({
     reviews: reviews.map((review) => ({
       id: review.id,
       rating: review.rating,

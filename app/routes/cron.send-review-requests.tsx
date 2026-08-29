@@ -1,4 +1,4 @@
-import type { ActionFunctionArgs } from "@remix-run/node";
+import { json, type ActionFunctionArgs } from "@remix-run/node";
 import crypto from "node:crypto";
 import { sendDueReviewRequests } from "../services/review-requests.server";
 
@@ -29,5 +29,5 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const result = await sendDueReviewRequests();
-  return Response.json(result);
+  return json(result);
 };

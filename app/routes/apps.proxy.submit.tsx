@@ -1,4 +1,4 @@
-import type { ActionFunctionArgs } from "@remix-run/node";
+import { json, type ActionFunctionArgs } from "@remix-run/node";
 import {
   verifyAppProxySignature,
   getShopDomainFromProxyRequest,
@@ -36,14 +36,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const shopDomain = getShopDomainFromProxyRequest(url);
   if (!shopDomain) {
-    return Response.json({ error: "Missing shop." }, { status: 400 });
+    return json({ error: "Missing shop." }, { status: 400 });
   }
 
   let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+    return json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
   const shop = await getOrCreateShop(shopDomain);
@@ -59,7 +59,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (rawPhotos.length > 0) {
     if (!plan.features.photosInReviews) {
-      return Response.json(
+      return json(
         { error: "Photos require the Pro plan." },
         { status: 403 },
       );
@@ -68,7 +68,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       photoUrls = await uploadReviewPhotos(rawPhotos, shopDomain);
     } catch (error) {
       if (error instanceof PhotoUploadError) {
-        return Response.json({ error: error.message }, { status: 400 });
+        return json({ error: error.message }, { status: 400 });
       }
       throw error;
     }
@@ -92,14 +92,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       shop.plan,
     );
 
-    return Response.json({
+    return json({
       ok: true,
       reviewId: review.id,
       status: review.status,
     });
   } catch (error) {
     if (error instanceof ReviewValidationError) {
-      return Response.json({ error: error.message }, { status: 400 });
+      return json({ error: error.message }, { status: 400 });
     }
     throw error;
   }

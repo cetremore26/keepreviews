@@ -22,9 +22,11 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>A short heading about [your app]</h1>
+        <h1 className={styles.heading}>KeepReviews</h1>
         <p className={styles.text}>
-          A tagline about [your app] that describes your value proposition.
+          Product reviews for your Shopify store, with one guarantee that
+          never changes: reviews you&apos;ve already collected are never
+          hidden or deleted because of your plan — free or paid.
         </p>
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
