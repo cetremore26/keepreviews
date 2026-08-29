@@ -1,0 +1,159 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Shopify session storage (required by @shopify/shopify-app-session-storage-prisma) ---
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// --- Application domain model ---
+
+enum Plan {
+  FREE
+  PRO
+}
+
+// Mirrors Shopify's AppSubscription status values so we can react to
+// webhooks/live checks without inventing our own vocabulary.
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  DECLINED
+  EXPIRED
+  FROZEN
+  PENDING
+}
+
+model Shop {
+  id     String @id @default(cuid())
+  domain String @unique
+
+  plan               Plan                @default(FREE)
+  subscriptionId     String? // Shopify AppSubscription GID, null while on FREE
+  subscriptionStatus SubscriptionStatus?
+  planUpdatedAt      DateTime            @default(now())
+
+  // Widget customization — paid-plan-only fields, enforced server-side in
+  // the settings action, not by omitting the columns.
+  widgetPrimaryColor String @default("#1A1A1A")
+  widgetLayout       String @default("grid") // "grid" | "list" | "carousel"
+
+  // Post-purchase review request emails. Off until the merchant turns it
+  // on — never send unsolicited emails to a merchant's customers just
+  // because the feature exists. Available on every plan.
+  reviewRequestsEnabled  Boolean @default(false)
+  reviewRequestDelayDays Int     @default(14)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviews        Review[]
+  reviewRequests ReviewRequest[]
+
+  @@index([plan])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReviewSource {
+  STOREFRONT // submitted directly on the storefront widget
+  EMAIL_REQUEST // submitted via the post-purchase email link
+}
+
+model Review {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  productId    String // Shopify Product GID
+  productTitle String?
+
+  rating      Int // 1-5, validated server-side
+  authorName  String
+  authorEmail String?
+  body        String
+
+  status ReviewStatus @default(PENDING)
+  source ReviewSource @default(STOREFRONT)
+
+  // Set once, at creation. Never updated afterwards, and never cleared by
+  // plan changes — this timestamp is what "50 most relevant reviews" on the
+  // free plan is computed from (newest first), so downgrading a shop can
+  // never delete or reorder history, only cap how many are *displayed*.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  photos ReviewPhoto[]
+
+  @@index([shopId, productId, status, createdAt])
+}
+
+model ReviewPhoto {
+  id       String @id @default(cuid())
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  url String
+
+  createdAt DateTime @default(now())
+}
+
+// One row per "please review your purchase" email we intend to send.
+// Created from the orders/paid webhook, consumed by a scheduled job that
+// actually sends the email (see app/services/review-requests.server.ts).
+model ReviewRequest {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  orderId       String // Shopify Order GID
+  customerEmail String
+  productId     String
+  productTitle  String?
+  // Storefront URL slug, fetched from the Admin API when this row is
+  // created. Null if the product was deleted before we could look it up —
+  // see sendDueReviewRequests, which skips (rather than guesses a link for)
+  // a row in that state.
+  productHandle String?
+
+  token String @unique // unguessable, used in the emailed review link
+
+  sendAt      DateTime // when the job should send this (order date + delay)
+  sentAt      DateTime?
+  completedAt DateTime? // set when the customer actually submits a review
+
+  createdAt DateTime @default(now())
+
+  @@index([shopId, sendAt, sentAt])
+  @@unique([shopId, orderId, productId])
+}

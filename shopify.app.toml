@@ -1,0 +1,77 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "21bc490f32d6918986af5b95c5197bfe"
+application_url = "https://keepreviews-dev.c3lect.com"
+embedded = true
+name = "KeepReviews"
+
+[access_scopes]
+# read_products: to show the product title/handle alongside a review.
+# read_orders: to detect a paid order and schedule a post-purchase review
+#   request email (see prisma ReviewRequest model).
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_products,read_orders"
+
+[auth]
+redirect_urls = [ "https://keepreviews-dev.c3lect.com/auth/callback" ]
+
+[webhooks]
+api_version = "2026-10"
+
+  # Handled by: /app/routes/webhooks.app.uninstalled.tsx
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  # Handled by: /app/routes/webhooks.app.scopes_update.tsx
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  # Fast-path plan sync. Handled by:
+  # /app/routes/webhooks.app_subscriptions.update.tsx
+  [[webhooks.subscriptions]]
+  topics = ["app_subscriptions/update"]
+  uri = "/webhooks/app_subscriptions/update"
+
+  # Protected customer data access approved (Name + Email, "App
+  # functionality") — these topics are live again as of this deploy.
+
+  # Schedules post-purchase review request emails. Handled by:
+  # /app/routes/webhooks.orders.paid.tsx
+  [[webhooks.subscriptions]]
+  topics = ["orders/paid"]
+  uri = "/webhooks/orders/paid"
+
+  # Cancels a not-yet-sent review request when its order is cancelled.
+  # Handled by: /app/routes/webhooks.orders.cancelled.tsx
+  [[webhooks.subscriptions]]
+  topics = ["orders/cancelled"]
+  uri = "/webhooks/orders/cancelled"
+
+  # Mandatory compliance topics for public apps — required before the app
+  # can be submitted for review. Same approval unblocks these too.
+  # See: https://shopify.dev/docs/apps/build/privacy-law-compliance
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/data_request"
+  compliance_topics = ["customers/data_request"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/redact"
+  compliance_topics = ["customers/redact"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/shop/redact"
+  compliance_topics = ["shop/redact"]
+
+# Lets the storefront theme extension call our review endpoints as
+# /apps/reviews/* on the shop's own domain (avoids CORS, and Shopify signs
+# every forwarded request with an HMAC we verify server-side — see
+# app/utils/app-proxy.server.ts).
+[app_proxy]
+url = "https://keepreviews-dev.c3lect.com/apps/proxy"
+subpath = "reviews"
+prefix = "apps"
+
+[build]
+automatically_update_urls_on_dev = true

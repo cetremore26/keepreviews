@@ -1,0 +1,19 @@
+# Zero-cost scheduler for the post-purchase review request emails, since
+# the $20-50/month budget has no room for a dedicated background-job
+# service. Requires two repo secrets: APP_URL (e.g. https://keepreviews.example.com)
+# and CRON_SECRET (must match the CRON_SECRET env var on the deployed app).
+name: Send review request emails
+
+on:
+  schedule:
+    - cron: "0 * * * *" # every hour
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        run: |
+          curl --fail -X POST "${{ secrets.APP_URL }}/cron/send-review-requests" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

@@ -1,0 +1,53 @@
+{% comment %}
+  KeepReviews product reviews widget.
+  Merchant adds this as an app block from the theme editor, on the product
+  template. All data comes from our own app proxy at /apps/reviews — never
+  from Liquid metafields — so the widget always reflects moderation state
+  and plan-based display limits computed server-side.
+{% endcomment %}
+
+<div
+  class="keepreviews-widget"
+  data-keepreviews-widget
+  data-product-id="{{ product.id }}"
+  data-product-title="{{ product.title | escape }}"
+  data-layout="{{ block.settings.layout }}"
+  data-heading="{{ block.settings.heading | escape }}"
+>
+  <p class="keepreviews-loading">{{ block.settings.loading_text }}</p>
+</div>
+
+{{ 'reviews.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'reviews.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "KeepReviews",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Customer reviews"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "options": [
+        { "value": "grid", "label": "Grid" },
+        { "value": "list", "label": "List" },
+        { "value": "carousel", "label": "Carousel" }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "text",
+      "id": "loading_text",
+      "label": "Loading text",
+      "default": "Loading reviews..."
+    }
+  ]
+}
+{% endschema %}
