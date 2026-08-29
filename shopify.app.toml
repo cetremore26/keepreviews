@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "21bc490f32d6918986af5b95c5197bfe"
-application_url = "https://keepreviews-dev.c3lect.com"
+application_url = "https://keepreviews.onrender.com"
 embedded = true
 name = "KeepReviews"
 
@@ -13,7 +13,7 @@ name = "KeepReviews"
 scopes = "read_products,read_orders"
 
 [auth]
-redirect_urls = [ "https://keepreviews-dev.c3lect.com/auth/callback" ]
+redirect_urls = [ "https://keepreviews.onrender.com/auth/callback" ]
 
 [webhooks]
 api_version = "2026-10"
@@ -69,7 +69,7 @@ api_version = "2026-10"
 # every forwarded request with an HMAC we verify server-side — see
 # app/utils/app-proxy.server.ts).
 [app_proxy]
-url = "https://keepreviews-dev.c3lect.com/apps/proxy"
+url = "https://keepreviews.onrender.com/apps/proxy"
 subpath = "reviews"
 prefix = "apps"
 
