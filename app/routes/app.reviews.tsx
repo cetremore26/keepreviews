@@ -152,7 +152,11 @@ export default function Reviews() {
   return (
     <Page
       secondaryActions={[
-        { content: "Export CSV", url: "/app/reviews/export" },
+        {
+          content: "Export CSV",
+          url: "/app/reviews/export",
+          target: "_blank",
+        },
       ]}
     >
       <TitleBar title="Reviews" />

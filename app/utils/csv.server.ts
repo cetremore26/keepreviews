@@ -12,6 +12,9 @@ export function buildCsv(headers: string[], rows: unknown[][]): string {
   const lines = [headers, ...rows].map((row) =>
     row.map(escapeCsvField).join(","),
   );
-  // CRLF is the RFC 4180 line ending and what Excel expects.
-  return lines.join("\r\n");
+  // CRLF is the RFC 4180 line ending and what Excel expects. The leading
+  // BOM makes Excel treat the file as UTF-8 instead of Windows-1252 —
+  // without it, any non-ASCII character (accents, ñ, emoji) renders as
+  // mojibake the moment someone opens the export in Excel.
+  return "﻿" + lines.join("\r\n");
 }
