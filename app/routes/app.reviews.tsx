@@ -77,8 +77,34 @@ export default function Reviews() {
   const [selectedTab, setSelectedTab] = useState(
     TABS.findIndex((t) => t.id === tabId),
   );
+  const [isExporting, setIsExporting] = useState(false);
 
   const isBusy = navigation.state !== "idle";
+
+  // A plain <a href> or Polaris's url-based action both fail here: Shopify's
+  // embedded-app session cookie is partitioned to the admin iframe, so any
+  // real browser navigation (including target="_blank", a new top-level
+  // context) leaves it behind and the request comes back unauthenticated.
+  // Fetching from inside this same iframe context keeps the cookie intact,
+  // so we do the download entirely in JS instead of navigating anywhere.
+  const exportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch("/app/reviews/export");
+      if (!response.ok) throw new Error("Export failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "keepreviews-export.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const changeTab = (index: number) => {
     setSelectedTab(index);
@@ -154,8 +180,8 @@ export default function Reviews() {
       secondaryActions={[
         {
           content: "Export CSV",
-          url: "/app/reviews/export",
-          target: "_blank",
+          onAction: exportCsv,
+          loading: isExporting,
         },
       ]}
     >
