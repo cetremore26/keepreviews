@@ -157,3 +157,16 @@ model ReviewRequest {
   @@index([shopId, sendAt, sentAt])
   @@unique([shopId, orderId, productId])
 }
+
+// Backs rate limiting on the public (unauthenticated) app proxy endpoints.
+// One row per request attempt, keyed by a caller-chosen string (e.g.
+// "submit:<ip>"). DB-backed rather than in-memory so a Render restart or
+// cold start never resets an attacker's counter back to zero — see
+// app/utils/rate-limit.server.ts.
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

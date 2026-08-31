@@ -10,6 +10,15 @@ import {
 } from "../services/reviews.server";
 import { getPlan } from "../config/plans.server";
 import { uploadReviewPhotos, PhotoUploadError } from "../services/storage.server";
+import { checkRateLimit, getClientIp } from "../utils/rate-limit.server";
+import { readJsonWithLimit, PayloadTooLargeError } from "../utils/http.server";
+
+// 3 photos x ~2MB raw, base64-inflated (~1.37x) plus room for the text
+// fields — generous for a real submission, tight enough to reject someone
+// trying to stream an unbounded body at us.
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
 
 /**
  * Public, unauthenticated endpoint for the "write a review" form in the
@@ -18,10 +27,6 @@ import { uploadReviewPhotos, PhotoUploadError } from "../services/storage.server
  * and only becomes visible after a merchant approves it in /app/reviews —
  * this endpoint can never publish a review directly, no matter what the
  * request body says.
- *
- * Known gap for a later session: no spam/rate-limiting layer yet beyond
- * basic field validation. Acceptable for MVP since everything lands in
- * moderation first; revisit if spam submissions become a real problem.
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
   if (request.method !== "POST") {
@@ -39,10 +44,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ error: "Missing shop." }, { status: 400 });
   }
 
+  const clientIp = getClientIp(request);
+  const { allowed } = await checkRateLimit(
+    `submit:${clientIp}`,
+    RATE_LIMIT_WINDOW_MS,
+    RATE_LIMIT_MAX_ATTEMPTS,
+  );
+  if (!allowed) {
+    return json(
+      { error: "Too many review submissions. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
-    body = await request.json();
-  } catch {
+    body = (await readJsonWithLimit(request, MAX_BODY_BYTES)) as Record<
+      string,
+      unknown
+    >;
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return json({ error: "Request body too large." }, { status: 413 });
+    }
     return json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
