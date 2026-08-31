@@ -9,6 +9,8 @@ import {
   InlineStack,
   Badge,
   Link,
+  Button,
+  List,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 
@@ -40,17 +42,56 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     pendingCount,
     approvedCount,
     rejectedCount,
+    shopDomain: session.shop,
   };
 };
 
+// The extension's uid + block filename ("reviews", from blocks/reviews.liquid)
+// — see extensions/product-reviews/shopify.extension.toml. Shopify's deep
+// link format for pre-selecting an app block in the theme editor:
+// https://shopify.dev/docs/apps/build/online-store/theme-app-extensions/configuration#deep-linking
+const APP_BLOCK_ID = "8206c118-c540-a158-d9c7-07a44245733bded89646/reviews";
+
 export default function Index() {
-  const { plan, pendingCount, approvedCount, rejectedCount } =
+  const { plan, pendingCount, approvedCount, rejectedCount, shopDomain } =
     useLoaderData<typeof loader>();
+
+  const themeEditorUrl = `https://${shopDomain}/admin/themes/current/editor?template=product&addAppBlockId=${APP_BLOCK_ID}&target=mainSection`;
 
   return (
     <Page>
       <TitleBar title="KeepReviews" />
       <BlockStack gap="500">
+        <Card>
+          <BlockStack gap="400">
+            <Text as="h2" variant="headingMd">
+              Add the review widget to your product pages
+            </Text>
+            <Text as="p" tone="subdued">
+              KeepReviews doesn't show up on your storefront until you add it
+              from the theme editor. This only needs to be done once:
+            </Text>
+            <List type="number">
+              <List.Item>
+                Click "Open theme editor" below — it opens your product page
+                template with the block picker ready.
+              </List.Item>
+              <List.Item>
+                In the block picker, open the <strong>Apps</strong> tab and
+                select <strong>KeepReviews</strong>.
+              </List.Item>
+              <List.Item>
+                Drag it to where you want reviews to appear, then click{" "}
+                <strong>Save</strong>.
+              </List.Item>
+            </List>
+            <div>
+              <Button variant="primary" url={themeEditorUrl} target="_blank">
+                Open theme editor
+              </Button>
+            </div>
+          </BlockStack>
+        </Card>
         <Layout>
           <Layout.Section>
             <Card>
