@@ -41,7 +41,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     price: 0,
     billingName: "KeepReviews Free",
     features: {
-      maxDisplayedReviews: 50,
+      maxDisplayedReviews: 20,
       photosInReviews: false,
       widgetCustomization: false,
       moderationPanel: true,
