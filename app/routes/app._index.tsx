@@ -46,17 +46,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
-// The extension's uid + block filename ("reviews", from blocks/reviews.liquid)
-// — see extensions/product-reviews/shopify.extension.toml. Shopify's deep
-// link format for pre-selecting an app block in the theme editor:
-// https://shopify.dev/docs/apps/build/online-store/theme-app-extensions/configuration#deep-linking
-const APP_BLOCK_ID = "8206c118-c540-a158-d9c7-07a44245733bded89646/reviews";
-
 export default function Index() {
   const { plan, pendingCount, approvedCount, rejectedCount, shopDomain } =
     useLoaderData<typeof loader>();
 
-  const themeEditorUrl = `https://${shopDomain}/admin/themes/current/editor?template=product&addAppBlockId=${APP_BLOCK_ID}&target=mainSection`;
+  // Deliberately not using the addAppBlockId deep-link param: it errored
+  // ("problem with the app block") in testing rather than reliably
+  // pre-selecting the block, which would put an alarming error message in
+  // front of merchants instead of helping them. Landing on the right
+  // template with the block picker one click away, plus the written steps,
+  // already satisfies Shopify's onboarding requirement without that risk.
+  const themeEditorUrl = `https://${shopDomain}/admin/themes/current/editor?template=product`;
 
   return (
     <Page>
@@ -74,15 +74,15 @@ export default function Index() {
             <List type="number">
               <List.Item>
                 Click "Open theme editor" below — it opens your product page
-                template with the block picker ready.
+                template.
               </List.Item>
               <List.Item>
-                In the block picker, open the <strong>Apps</strong> tab and
-                select <strong>KeepReviews</strong>.
+                Click <strong>Add block</strong> where you want reviews to
+                appear, open the <strong>Apps</strong> tab, and select{" "}
+                <strong>KeepReviews</strong>.
               </List.Item>
               <List.Item>
-                Drag it to where you want reviews to appear, then click{" "}
-                <strong>Save</strong>.
+                Click <strong>Save</strong>.
               </List.Item>
             </List>
             <div>
