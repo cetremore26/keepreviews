@@ -73,19 +73,56 @@ export default function Privacy() {
 
       <h2>Data retention and deletion</h2>
       <p>
-        Reviews are kept for as long as you use the app, regardless of
-        which plan you're on — a plan change or a failed payment never
-        deletes or hides review history, it only affects how many reviews
-        are displayed on the storefront widget.
+        KeepReviews' retention rule is tied to purpose, not a fixed
+        calendar deadline: a reviewer's name and email are kept for
+        exactly as long as their review exists and is being displayed to
+        shoppers — no longer, and never for a secondary purpose like
+        marketing. Concretely:
       </p>
+      <ul>
+        <li>
+          Reviews (and the reviewer's name/email attached to them) are
+          kept for as long as you use the app, regardless of which plan
+          you're on — a plan change or a failed payment never deletes or
+          hides review history, it only affects how many reviews are
+          displayed on the storefront widget.
+        </li>
+        <li>
+          If a customer asks you to delete their personal data, KeepReviews
+          supports Shopify's standard data erasure request: the customer's
+          name and email are removed from their review immediately, while
+          the review text and rating remain (a product opinion isn't
+          itself personal data).
+        </li>
+        <li>
+          If you uninstall the app, all of your store's data — reviews,
+          reviewer names and emails, everything — is permanently deleted
+          after Shopify's standard compliance waiting period. Nothing is
+          retained "just in case" past that point.
+        </li>
+      </ul>
+
+      <h2>Data loss prevention</h2>
       <p>
-        If a customer asks you to delete their personal data, KeepReviews
-        supports Shopify's standard data erasure request: the customer's
-        name and email are removed from their review, while the review
-        text and rating remain (a product opinion isn't itself personal
-        data). If you uninstall the app, all of your store's data —
-        reviews included — is permanently deleted after Shopify's standard
-        compliance waiting period.
+        KeepReviews' data loss prevention approach is a set of concrete
+        technical controls rather than a single tool, applied at every
+        layer data passes through:
+      </p>
+      <ul>
+        <li><strong>In transit:</strong> every connection — storefront to app, app to database, app to email/storage providers — is HTTPS/TLS only.</li>
+        <li><strong>At rest:</strong> the database and file storage are encrypted at rest by the underlying provider (Supabase), including automated backups.</li>
+        <li><strong>Access control:</strong> the credentials that can write to storage or bypass row-level restrictions are used only in server-side code and are never exposed to the browser or to any third party.</li>
+        <li><strong>Abuse prevention:</strong> the public endpoints that accept data from shoppers (submitting a review, reading the widget) are rate-limited per IP and reject oversized requests, so a single bad actor can't extract or flood data at scale.</li>
+        <li><strong>Monitoring:</strong> the actions described under "Access log" below are recorded and reviewable.</li>
+        <li><strong>Response:</strong> the incident response process below governs what happens if a control fails.</li>
+      </ul>
+
+      <h2>Access log</h2>
+      <p>
+        Every action that touches a merchant's reviews or settings —
+        approving or rejecting a review, exporting the CSV, or changing
+        widget/email settings — is recorded with who performed it and
+        when, so access to personal data is auditable after the fact.
       </p>
 
       <h2>Your rights</h2>
