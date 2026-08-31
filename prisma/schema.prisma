@@ -187,3 +187,16 @@ model AuditLog {
 
   @@index([shopId, createdAt])
 }
+
+// A single running counter of bytes uploaded to Supabase Storage, kept in
+// our own DB instead of asking Supabase's Storage API to sum folder sizes
+// (its list endpoint isn't recursive, and we shard uploads under one
+// subfolder per shop). There's exactly one row ("global"); incremented in
+// storage.server.ts on every successful upload, read by the daily
+// low-storage-warning cron.
+model StorageUsage {
+  id          String    @id @default("global")
+  totalBytes  BigInt    @default(0)
+  lastAlertAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}

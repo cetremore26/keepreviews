@@ -7,6 +7,7 @@
  * so every input here is treated as hostile: size and mime type are
  * enforced before anything touches the network.
  */
+import db from "../db.server";
 
 const MAX_PHOTOS_PER_REVIEW = 3;
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024; // 2MB decoded
@@ -26,7 +27,10 @@ function parseDataUrl(dataUrl: string): { mime: string; base64: string } {
   return { mime: match[1], base64: match[2] };
 }
 
-async function uploadOne(dataUrl: string, shopDomain: string): Promise<string> {
+async function uploadOne(
+  dataUrl: string,
+  shopDomain: string,
+): Promise<{ url: string; bytes: number }> {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || "review-photos";
@@ -65,7 +69,10 @@ async function uploadOne(dataUrl: string, shopDomain: string): Promise<string> {
     throw new PhotoUploadError(`Upload failed (${response.status}): ${text}`);
   }
 
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+  return {
+    url: `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`,
+    bytes: bytes.length,
+  };
 }
 
 /** Uploads up to MAX_PHOTOS_PER_REVIEW images and returns their public
@@ -76,11 +83,26 @@ export async function uploadReviewPhotos(
   shopDomain: string,
 ): Promise<string[]> {
   const capped = dataUrls.slice(0, MAX_PHOTOS_PER_REVIEW);
-  const urls: string[] = [];
+  const uploaded: { url: string; bytes: number }[] = [];
 
   for (const dataUrl of capped) {
-    urls.push(await uploadOne(dataUrl, shopDomain));
+    uploaded.push(await uploadOne(dataUrl, shopDomain));
   }
 
-  return urls;
+  const totalBytes = uploaded.reduce((sum, u) => sum + u.bytes, 0);
+  if (totalBytes > 0) {
+    // Fire-and-forget: a failure to update the running total must never
+    // fail the review submission itself.
+    db.storageUsage
+      .upsert({
+        where: { id: "global" },
+        create: { id: "global", totalBytes: BigInt(totalBytes) },
+        update: { totalBytes: { increment: BigInt(totalBytes) } },
+      })
+      .catch((error) => {
+        console.error("Failed to update storage usage counter:", error);
+      });
+  }
+
+  return uploaded.map((u) => u.url);
 }

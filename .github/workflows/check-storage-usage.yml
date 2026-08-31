@@ -1,0 +1,20 @@
+# Zero-cost daily check on Supabase Storage usage (review photos, Pro
+# plan). Emails ALERT_EMAIL when usage crosses 80% of the free 1 GiB
+# limit, so upgrading happens before uploads start failing for a paying
+# merchant instead of after. Reuses the same repo secrets as
+# send-review-requests.yml.
+name: Check storage usage
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # once a day, at noon UTC
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        run: |
+          curl --fail -X POST "${{ secrets.APP_URL }}/cron/check-storage-usage" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

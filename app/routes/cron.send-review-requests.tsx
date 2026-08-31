@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs } from "@remix-run/node";
-import crypto from "node:crypto";
 import { sendDueReviewRequests } from "../services/review-requests.server";
+import { verifyCronSecret } from "../utils/cron-auth.server";
 
 /**
  * Triggered by an external scheduler (e.g. a free GitHub Actions cron, or
@@ -11,20 +11,7 @@ import { sendDueReviewRequests } from "../services/review-requests.server";
  * customers or exhaust the email quota.
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const secret = process.env.CRON_SECRET;
-  const provided = request.headers.get("x-cron-secret");
-
-  if (!secret || !provided) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const secretBuffer = Buffer.from(secret);
-  const providedBuffer = Buffer.from(provided);
-  const isValid =
-    secretBuffer.length === providedBuffer.length &&
-    crypto.timingSafeEqual(secretBuffer, providedBuffer);
-
-  if (!isValid) {
+  if (!verifyCronSecret(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 
