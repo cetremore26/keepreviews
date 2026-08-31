@@ -23,6 +23,7 @@ import {
 } from "../models/shop.server";
 import { syncShopPlanFromShopify } from "../services/billing.server";
 import { getPlan } from "../config/plans.server";
+import { logAudit } from "../utils/audit-log.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, billing } = await authenticate.admin(request);
@@ -76,6 +77,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       widgetLayout,
     });
 
+    logAudit({
+      shopId: shop.id,
+      actor: session.shop,
+      action: "settings.widget_updated",
+      detail: `color=${widgetPrimaryColor} layout=${widgetLayout}`,
+    });
+
     return { ok: true };
   }
 
@@ -96,6 +104,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await updateReviewRequestSettings(session.shop, {
       reviewRequestsEnabled,
       reviewRequestDelayDays,
+    });
+
+    logAudit({
+      shopId: shop.id,
+      actor: session.shop,
+      action: "settings.review_requests_updated",
+      detail: `enabled=${reviewRequestsEnabled} delayDays=${reviewRequestDelayDays}`,
     });
 
     return { ok: true };

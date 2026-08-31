@@ -95,6 +95,48 @@ export default function Privacy() {
         deleted history.
       </p>
 
+      <h2>Data processing terms</h2>
+      <p>
+        KeepReviews acts as a data processor for the personal data described
+        above (reviewer name, email, and photos), and you — the merchant —
+        remain the data controller for your store and its customers. In that
+        capacity, KeepReviews:
+      </p>
+      <ul>
+        <li>Only processes this data to provide the app's features described in this policy — never for its own marketing, resale, or any other purpose.</li>
+        <li>Does not share this data with any third party except the infrastructure providers listed above, solely to run the app.</li>
+        <li>Will assist you in responding to a data subject's access or deletion request, as described under "Data retention and deletion" above.</li>
+        <li>Will notify you without undue delay if it becomes aware of a security incident affecting your store's data — see the incident response section below.</li>
+      </ul>
+
+      <h2>Security incident response</h2>
+      <p>
+        If KeepReviews becomes aware of a security incident that may have
+        exposed merchant or customer data, we will:
+      </p>
+      <ol>
+        <li>Contain the issue and, where possible, stop it from continuing.</li>
+        <li>Assess what data and which shops were affected.</li>
+        <li>
+          Notify affected merchants by email within 72 hours of confirming
+          the incident, describing what happened, what data was involved,
+          and what we're doing about it.
+        </li>
+        <li>
+          Where the incident involves personal data of a merchant's
+          customers, provide the merchant with what they need to meet their
+          own legal notification obligations.
+        </li>
+        <li>Fix the underlying cause before considering the incident closed.</li>
+      </ol>
+      <p>
+        To report a suspected security issue, email{" "}
+        <a href="mailto:soporte@keepreviews.c3lect.com">
+          soporte@keepreviews.c3lect.com
+        </a>{" "}
+        with as much detail as you can provide.
+      </p>
+
       <h2>Contact</h2>
       <p>
         Questions about this policy, or a data request from one of your

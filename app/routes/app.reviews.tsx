@@ -23,6 +23,7 @@ import {
   setReviewStatus,
   ReviewValidationError,
 } from "../services/reviews.server";
+import { logAudit } from "../utils/audit-log.server";
 
 const TABS: { id: string; label: string; status?: ReviewStatus }[] = [
   { id: "pending", label: "Pending", status: "PENDING" },
@@ -66,6 +67,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
     throw error;
   }
+
+  logAudit({
+    shopId: shop.id,
+    actor: session.shop,
+    action: "review.status_changed",
+    detail: `reviewId=${reviewId} status=${status}`,
+  });
 
   return { ok: true };
 };

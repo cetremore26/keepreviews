@@ -3,6 +3,7 @@ import { authenticate } from "../shopify.server";
 import { getOrCreateShop } from "../models/shop.server";
 import { listAllReviewsForExport } from "../services/reviews.server";
 import { buildCsv } from "../utils/csv.server";
+import { logAudit } from "../utils/audit-log.server";
 
 // Available on every plan, on purpose: the data-portability guarantee is
 // the product's core differentiator, not a paid perk. See
@@ -12,6 +13,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const shop = await getOrCreateShop(session.shop);
 
   const reviews = await listAllReviewsForExport(shop.id);
+
+  logAudit({
+    shopId: shop.id,
+    actor: session.shop,
+    action: "reviews.csv_exported",
+    detail: `count=${reviews.length}`,
+  });
 
   const csv = buildCsv(
     [

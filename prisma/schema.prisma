@@ -170,3 +170,20 @@ model RateLimitAttempt {
 
   @@index([key, createdAt])
 }
+
+// Records who did what to personal data, and when — answers "do you log
+// access to personal data?" with an actual log, not just a policy
+// statement. actor is the Shopify staff account email from the session
+// (there's only ever one merchant user per shop here, but this is future-
+// proof if that ever changes); shopId has no relation/cascade on purpose
+// so a log entry survives even if the shop itself is later deleted.
+model AuditLog {
+  id        String   @id @default(cuid())
+  shopId    String
+  actor     String
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([shopId, createdAt])
+}
