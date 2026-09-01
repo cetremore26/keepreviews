@@ -24,23 +24,26 @@ export default function App() {
       <div className={styles.content}>
         <h1 className={styles.heading}>KeepReviews</h1>
         <p className={styles.text}>
-          Product reviews for your Shopify store, with one guarantee that
-          never changes: reviews you&apos;ve already collected are never
-          hidden or deleted because of your plan — free or paid.
+          Some review apps hide or delete the reviews you've already
+          collected the moment you downgrade or a payment fails. KeepReviews
+          never does that — on any plan, forever.
         </p>
         <p className={styles.text}>
           Install KeepReviews from the Shopify App Store on the store you
-          want to use it with.
+          want to use it with. Free to start, no credit card required.
         </p>
         <ul className={styles.list}>
           <li>
-            <strong>Reviews are never held hostage.</strong> Cancel, downgrade,
-            or let a payment fail — every review you've collected keeps
-            showing. You only lose access to Pro features, never your data.
+            <strong>Reviews are never held hostage.</strong> Cancel,
+            downgrade, or let a payment fail — every review you've collected
+            keeps showing. You only lose access to Pro features, never your
+            data.
           </li>
           <li>
-            <strong>Full moderation control.</strong> Approve or reject every
-            review before it's visible, with photos on the Pro plan.
+            <strong>Bring reviews you already have.</strong> Import from
+            AliExpress free, or from Amazon, Etsy, and Shopee on Pro — via a
+            CSV you control, not a bot that breaks the moment a marketplace
+            changes its page.
           </li>
           <li>
             <strong>Your data, exportable anytime.</strong> One-click CSV

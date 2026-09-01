@@ -106,8 +106,8 @@ export default function Index() {
                 </InlineStack>
                 <Text as="p" variant="bodyMd">
                   {plan.id === "PRO"
-                    ? "Unlimited displayed reviews, photos, widget customization, moderation, and CSV export."
-                    : `Up to ${plan.features.maxDisplayedReviews} displayed reviews on the storefront, plus full moderation and CSV export. Every review you collect is stored regardless of plan — see `}
+                    ? "Unlimited displayed reviews, photos, widget customization, moderation, CSV export, and import from AliExpress, Amazon, Etsy & Shopee."
+                    : `Up to ${plan.features.maxDisplayedReviews} displayed reviews on the storefront, plus full moderation, CSV export, and AliExpress import. Every review you collect is stored regardless of plan — see `}
                   {plan.id === "FREE" && (
                     <Link url="/app/pricing" removeUnderline>
                       upgrade options

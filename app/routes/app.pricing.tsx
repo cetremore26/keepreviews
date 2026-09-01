@@ -10,6 +10,7 @@ import {
   Button,
   List,
   Badge,
+  Banner,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 
@@ -70,81 +71,99 @@ export default function Pricing() {
   return (
     <Page>
       <TitleBar title="Plan & billing" />
-      <Layout>
-        <Layout.Section variant="oneHalf">
-          <Card>
-            <BlockStack gap="400">
-              <InlineStack align="space-between">
-                <Text as="h2" variant="headingLg">
-                  Free
+      <BlockStack gap="400">
+        <Banner tone="info">
+          Before you choose: nothing here is a trap. If you cancel, downgrade,
+          or a payment fails, every review you've already collected keeps
+          showing under the Free plan's terms — never hidden, never deleted.
+          You only lose access to Pro-only features until you resubscribe.
+        </Banner>
+        <Layout>
+          <Layout.Section variant="oneHalf">
+            <Card>
+              <BlockStack gap="400">
+                <InlineStack align="space-between">
+                  <Text as="h2" variant="headingLg">
+                    Free
+                  </Text>
+                  {plan === "FREE" && <Badge tone="info">Current plan</Badge>}
+                </InlineStack>
+                <Text as="p" variant="headingXl">
+                  $0
                 </Text>
-                {plan === "FREE" && <Badge tone="info">Current plan</Badge>}
-              </InlineStack>
-              <Text as="p" variant="headingXl">
-                $0
-              </Text>
-              <List>
-                <List.Item>
-                  Up to {freeMaxDisplayedReviews} displayed reviews per
-                  product
-                </List.Item>
-                <List.Item>Basic widget, no customization</List.Item>
-                <List.Item>Full moderation panel</List.Item>
-                <List.Item>CSV export of all your data, anytime</List.Item>
-              </List>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-        <Layout.Section variant="oneHalf">
-          <Card>
-            <BlockStack gap="400">
-              <InlineStack align="space-between">
-                <Text as="h2" variant="headingLg">
-                  Pro
+                <Text as="p" tone="subdued">
+                  Everything you need to start collecting real reviews, no
+                  card required.
                 </Text>
-                {plan === "PRO" && <Badge tone="success">Current plan</Badge>}
-              </InlineStack>
-              <Text as="p" variant="headingXl">
-                ${proPrice.toFixed(2)}
-                <Text as="span" tone="subdued">
-                  {" "}
-                  / month
+                <List>
+                  <List.Item>
+                    Up to {freeMaxDisplayedReviews} displayed reviews per
+                    product
+                  </List.Item>
+                  <List.Item>Basic widget, no customization</List.Item>
+                  <List.Item>Import reviews from AliExpress</List.Item>
+                  <List.Item>Full moderation panel</List.Item>
+                  <List.Item>CSV export of all your data, anytime</List.Item>
+                </List>
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+          <Layout.Section variant="oneHalf">
+            <Card>
+              <BlockStack gap="400">
+                <InlineStack align="space-between">
+                  <Text as="h2" variant="headingLg">
+                    Pro
+                  </Text>
+                  {plan === "PRO" && <Badge tone="success">Current plan</Badge>}
+                </InlineStack>
+                <Text as="p" variant="headingXl">
+                  ${proPrice.toFixed(2)}
+                  <Text as="span" tone="subdued">
+                    {" "}
+                    / month
+                  </Text>
                 </Text>
-              </Text>
-              <List>
-                <List.Item>Unlimited displayed reviews</List.Item>
-                <List.Item>Photos in reviews</List.Item>
-                <List.Item>Widget design customization</List.Item>
-                <List.Item>Full moderation panel</List.Item>
-                <List.Item>CSV export of all your data, anytime</List.Item>
-              </List>
-              {plan === "FREE" ? (
-                <Button
-                  variant="primary"
-                  disabled={isBusy}
-                  onClick={() => submit({ intent: "upgrade" }, { method: "post" })}
-                >
-                  Upgrade to Pro
-                </Button>
-              ) : (
-                <Button
-                  disabled={isBusy}
-                  onClick={() => submit({ intent: "downgrade" }, { method: "post" })}
-                >
-                  Cancel and return to Free
-                </Button>
-              )}
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-      </Layout>
-      <BlockStack gap="200">
-        <Text as="p" tone="subdued">
-          If you cancel or a payment fails, every review you've already
-          collected keeps showing on the Free plan's terms — nothing is ever
-          hidden or deleted. You only lose access to Pro-only features until
-          you resubscribe.
-        </Text>
+                <Text as="p" tone="subdued">
+                  For stores with more reviews to show and more places to
+                  bring them from.
+                </Text>
+                <List>
+                  <List.Item>
+                    Show every review you've collected — no display cap
+                  </List.Item>
+                  <List.Item>
+                    Import reviews from AliExpress, Amazon, Etsy &amp; Shopee
+                  </List.Item>
+                  <List.Item>Photos in reviews</List.Item>
+                  <List.Item>Widget design customization</List.Item>
+                  <List.Item>Full moderation panel</List.Item>
+                  <List.Item>CSV export of all your data, anytime</List.Item>
+                </List>
+                {plan === "FREE" ? (
+                  <Button
+                    variant="primary"
+                    disabled={isBusy}
+                    onClick={() =>
+                      submit({ intent: "upgrade" }, { method: "post" })
+                    }
+                  >
+                    Upgrade to Pro
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={isBusy}
+                    onClick={() =>
+                      submit({ intent: "downgrade" }, { method: "post" })
+                    }
+                  >
+                    Cancel and return to Free
+                  </Button>
+                )}
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+        </Layout>
       </BlockStack>
     </Page>
   );
