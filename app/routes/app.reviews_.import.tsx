@@ -120,6 +120,32 @@ export default function ReviewsImport() {
   const [marketplace, setMarketplace] = useState<ImportMarketplace>("ALIEXPRESS");
   const [file, setFile] = useState<File | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+
+  // Same reason as exportCsv in app.reviews.tsx: Polaris's url-based Link
+  // renders through Remix's client-side router in this app (see
+  // linkComponent in AppProvider), so it fetches the route instead of
+  // triggering a real browser download, and the embedded session cookie
+  // is partitioned to this iframe anyway. Fetching and saving the blob
+  // ourselves works in both regards.
+  const downloadTemplate = async () => {
+    setIsDownloadingTemplate(true);
+    try {
+      const response = await fetch("/app/reviews/import/template");
+      if (!response.ok) throw new Error("Template download failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "keepreviews-import-template.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
 
   const allowedMarketplaces = new Set(plan.features.importMarketplaces);
   const isMarketplaceLocked = !allowedMarketplaces.has(marketplace);
@@ -172,9 +198,13 @@ export default function ReviewsImport() {
               reject any of them from the Reviews page afterward.
             </Text>
             <div>
-              <Link url="/app/reviews/import/template">
+              <Button
+                variant="plain"
+                loading={isDownloadingTemplate}
+                onClick={downloadTemplate}
+              >
                 Download CSV template
-              </Link>
+              </Button>
             </div>
 
             <Select
