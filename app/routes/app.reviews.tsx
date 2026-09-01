@@ -1,6 +1,11 @@
 import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
+import {
+  useLoaderData,
+  useSubmit,
+  useNavigation,
+  useNavigate,
+} from "@remix-run/react";
 import {
   Page,
   Card,
@@ -81,6 +86,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function Reviews() {
   const { reviews, tabId } = useLoaderData<typeof loader>();
   const submit = useSubmit();
+  const navigate = useNavigate();
   const navigation = useNavigation();
   const [selectedTab, setSelectedTab] = useState(
     TABS.findIndex((t) => t.id === tabId),
@@ -186,6 +192,10 @@ export default function Reviews() {
   return (
     <Page
       secondaryActions={[
+        {
+          content: "Import reviews",
+          onAction: () => navigate("/app/reviews/import"),
+        },
         {
           content: "Export CSV",
           onAction: exportCsv,

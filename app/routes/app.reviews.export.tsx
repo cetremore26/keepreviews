@@ -34,6 +34,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       "source",
       "photo_urls",
       "created_at",
+      "import_marketplace",
+      "source_review_url",
     ],
     reviews.map((review) => [
       review.id,
@@ -47,6 +49,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       review.source,
       review.photos.map((p) => p.url).join(" | "),
       review.createdAt.toISOString(),
+      review.importMarketplace ?? "",
+      review.sourceReviewUrl ?? "",
     ]),
   );
 

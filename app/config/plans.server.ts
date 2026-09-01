@@ -8,6 +8,8 @@
 // the rule inline, so the "never hide/delete reviews" guarantee and the
 // plan feature list can't drift apart.
 
+import type { ImportMarketplace } from "@prisma/client";
+
 export type PlanId = "FREE" | "PRO";
 
 export interface PlanDefinition {
@@ -29,6 +31,15 @@ export interface PlanDefinition {
     widgetCustomization: boolean;
     moderationPanel: boolean;
     csvExport: boolean;
+    /** Marketplaces this plan may import reviews FROM via CSV. Importing a
+     *  marketplace not in this list must be rejected server-side in
+     *  review-import.server.ts, not just hidden in the UI. */
+    importMarketplaces: ImportMarketplace[];
+    /** Cap on total reviews with source=IMPORTED this shop may hold. null =
+     *  unlimited. Like maxDisplayedReviews, this only ever limits *new*
+     *  imports going forward — never deletes or hides rows already
+     *  imported, including after a downgrade. */
+    maxImportedReviewsTotal: number | null;
   };
 }
 
@@ -46,6 +57,13 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       widgetCustomization: false,
       moderationPanel: true,
       csvExport: true,
+      importMarketplaces: ["ALIEXPRESS"],
+      // Matches the most generous free tier we found among competitors
+      // (Ali Reviews, ~30 reviews x 5 products) — see
+      // mineria_willingness_to_pay.md section 5.4. Not the real conversion
+      // lever (maxDisplayedReviews already caps what's shown per product on
+      // Free); this exists to bound storage/abuse, not to drive upgrades.
+      maxImportedReviewsTotal: 150,
     },
   },
   PRO: {
@@ -59,6 +77,8 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       widgetCustomization: true,
       moderationPanel: true,
       csvExport: true,
+      importMarketplaces: ["ALIEXPRESS", "AMAZON", "ETSY", "SHOPEE"],
+      maxImportedReviewsTotal: null,
     },
   },
 };

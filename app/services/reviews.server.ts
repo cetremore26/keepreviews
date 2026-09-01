@@ -11,8 +11,8 @@ import type { ReviewStatus, ReviewSource } from "@prisma/client";
  * they collected, on every plan.
  */
 
-const MAX_BODY_LENGTH = 5000;
-const MAX_NAME_LENGTH = 200;
+export const MAX_BODY_LENGTH = 5000;
+export const MAX_NAME_LENGTH = 200;
 
 export class ReviewValidationError extends Error {}
 

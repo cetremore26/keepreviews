@@ -25,6 +25,7 @@ export default function App() {
           Home
         </Link>
         <Link to="/app/reviews">Reviews</Link>
+        <Link to="/app/reviews/import">Import reviews</Link>
         <Link to="/app/settings">Widget settings</Link>
         <Link to="/app/pricing">Plan &amp; billing</Link>
       </NavMenu>

@@ -73,8 +73,9 @@ model Shop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reviews        Review[]
-  reviewRequests ReviewRequest[]
+  reviews            Review[]
+  reviewRequests     ReviewRequest[]
+  reviewImportBatches ReviewImportBatch[]
 
   @@index([plan])
 }
@@ -88,6 +89,21 @@ enum ReviewStatus {
 enum ReviewSource {
   STOREFRONT // submitted directly on the storefront widget
   EMAIL_REQUEST // submitted via the post-purchase email link
+  IMPORTED // brought in via a merchant-uploaded CSV, see ReviewImportBatch
+}
+
+enum ImportMarketplace {
+  ALIEXPRESS
+  AMAZON
+  ETSY
+  SHOPEE
+  OTHER
+}
+
+enum ImportBatchStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model Review {
@@ -106,6 +122,23 @@ model Review {
   status ReviewStatus @default(PENDING)
   source ReviewSource @default(STOREFRONT)
 
+  // Import-only metadata, all nullable — untouched (stays NULL) for every
+  // review created through the existing storefront/email flows. See
+  // ReviewImportBatch and review-import.server.ts.
+  importMarketplace ImportMarketplace?
+  importBatchId     String?
+  // sha256 of shopId+productId+marketplace+authorName+rating+body+sourceCreatedAt,
+  // computed at import time. Lets re-uploading the same (or an overlapping)
+  // CSV never create duplicate rows — @@unique below enforces it. Postgres
+  // allows unlimited NULLs in a unique column, so non-imported reviews
+  // (always NULL here) are unaffected.
+  importDedupeKey String?
+  // Original review date on the source marketplace, display-only. Never
+  // used for sorting — createdAt (below) stays "when this row entered our
+  // database" everywhere, exactly as it does today.
+  sourceCreatedAt DateTime?
+  sourceReviewUrl String?
+
   // Set once, at creation. Never updated afterwards, and never cleared by
   // plan changes — this timestamp is what "50 most relevant reviews" on the
   // free plan is computed from (newest first), so downgrading a shop can
@@ -115,7 +148,35 @@ model Review {
 
   photos ReviewPhoto[]
 
+  @@unique([shopId, importDedupeKey])
   @@index([shopId, productId, status, createdAt])
+}
+
+// One row per CSV a merchant uploads through /app/reviews/import. Exists so
+// every import is auditable and its per-row outcome is visible to the
+// merchant — no result is ever silently swallowed.
+model ReviewImportBatch {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  marketplace ImportMarketplace
+  filename    String
+  status      ImportBatchStatus @default(PROCESSING)
+
+  totalRows             Int @default(0)
+  importedCount         Int @default(0)
+  skippedDuplicateCount Int @default(0)
+  errorCount            Int @default(0)
+  // First ~200 row errors, serialized as JSON. Capped so a pathological CSV
+  // can't grow this column unbounded.
+  errorSummary String?
+
+  createdBy   String // staff email from the session, same convention as AuditLog.actor
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([shopId, createdAt])
 }
 
 model ReviewPhoto {
