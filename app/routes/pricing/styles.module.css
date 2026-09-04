@@ -1,0 +1,362 @@
+.page {
+  /* light (default) */
+  --text: #14201b;
+  --text-muted: #4b594f;
+  --bg: #f5f3ec;
+  --card: #ffffff;
+  --border: #dad5c4;
+  --accent: #3f6b54;
+  --accent-strong: #2e5240;
+  --accent-soft: #e4ebe3;
+  --solid: #14201b;
+  --on-solid: #f5f3ec;
+  --on-accent: #ffffff;
+
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  padding: clamp(3rem, 6vw, 5.5rem) 1.5rem 5rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page:not([data-theme="light"]) {
+    --text: #f3f1e7;
+    --text-muted: #b9b6a8;
+    --bg: #0e1512;
+    --card: #161f19;
+    --border: #2a342d;
+    --accent: #6fae8c;
+    --accent-strong: #8bc4a6;
+    --accent-soft: #1e2e27;
+    --solid: #f3f1e7;
+    --on-solid: #14201b;
+    --on-accent: #0e1512;
+  }
+}
+
+.content {
+  display: grid;
+  gap: 3rem;
+  max-width: 58rem;
+  width: 100%;
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.heading {
+  margin: 0;
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-optical-sizing: auto;
+  font-size: clamp(2.2rem, 5vw, 3.1rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  text-wrap: balance;
+  color: var(--text);
+}
+
+.subheading {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 28rem;
+  text-wrap: balance;
+}
+
+/* ---------- guarantee notice ---------- */
+
+.banner {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 1.4rem 0.25rem;
+}
+
+.bannerIcon {
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.bannerBody {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.bannerLabel {
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bannerText {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.bannerText strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---------- plan cards ---------- */
+
+.plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+@media only screen and (max-width: 45rem) {
+  .plans {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 2.25rem 2rem 2rem;
+  display: grid;
+  gap: 1.4rem;
+  align-content: start;
+}
+
+.cardPro {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+
+.seal {
+  position: absolute;
+  top: -0.85rem;
+  right: 1.6rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.7rem 0.5rem;
+  transform: rotate(3deg);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%);
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.35);
+}
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.planName {
+  margin: 0;
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  min-height: 2.7rem;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.price {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  font-size: clamp(2.15rem, 4.5vw, 2.5rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.priceSuffix {
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.divider {
+  height: 0;
+  border-top: 1px dashed var(--border);
+  margin: 0;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.checkDot {
+  flex-shrink: 0;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.checkDotPro {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---------- buttons ---------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  text-decoration: none;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.3rem;
+  font-size: 0.94rem;
+  font-weight: 600;
+  border: 1.5px solid var(--text);
+  color: var(--text);
+  background: transparent;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.button:hover {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.buttonPrimary {
+  border-color: var(--solid);
+  background: var(--solid);
+  color: var(--on-solid);
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+.buttonPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- footnote ---------- */
+
+.footnote {
+  text-align: center;
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ---------- entrance ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero,
+  .banner,
+  .plans,
+  .footnote {
+    animation: rise 0.5s ease-out backwards;
+  }
+
+  .banner {
+    animation-delay: 0.08s;
+  }
+
+  .plans {
+    animation-delay: 0.16s;
+  }
+
+  .footnote {
+    animation-delay: 0.22s;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
