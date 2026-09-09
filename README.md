@@ -1,83 +1,79 @@
 # KeepReviews
 
-Shopify app that shows product reviews on a merchant's storefront, with one
-non-negotiable guarantee: **reviews already collected are never hidden or
-deleted, on any plan, ever.** Downgrading (or a failed payment) only reduces
-how many reviews are *displayed*; the merchant's data and moderation panel
-are always complete, on Free or Pro.
+Shopify app that shows product reviews on a merchant's storefront, with one non-negotiable guarantee: **reviews already collected are never hidden or deleted, on any plan, ever.**
 
-See [`../sesion-estrategia-app.md`](../sesion-estrategia-app.md) and
-[`../prompt-claude-code-inicial.md`](../prompt-claude-code-inicial.md) for
-the market validation and product brief this app is built from.
+Downgrading, or a failed payment, only reduces how many reviews are *displayed*. The merchant's data and moderation panel stay complete on Free and Pro alike, and CSV export is available on every plan. Data portability is the differentiator, not a paid perk.
+
+---
 
 ## Stack
 
-- **Remix** (Shopify's recommended framework) + **Polaris** + **App Bridge**
-- **PostgreSQL** via **Prisma** (free tier: [Neon](https://neon.tech) or
-  [Supabase](https://supabase.com))
-- **Shopify Billing API** for the Free/Pro subscription
-- **Theme App Extension** (plain Liquid + vanilla JS, no build step) for the
-  storefront widget
-- **Resend** free tier for post-purchase review-request emails
-- No AI anywhere in the core product — see the brief for why.
+**Framework** · Remix, Shopify's recommended stack, with Polaris and App Bridge
 
-## Architecture at a glance
+**Database** · PostgreSQL via Prisma
 
-| Concern | Where it lives | Why |
-|---|---|---|
-| Plan definitions & price | `app/config/plans.server.ts` | Single source of truth; price is an env var, not hardcoded |
-| Shop plan cache | `Shop.plan` (Prisma) | The storefront widget can't afford an Admin API call per page view |
-| Plan reconciliation | `app/services/billing.server.ts` | Self-heals from Shopify's Billing API on every admin page load, in case a webhook is missed |
-| Review read/write rules | `app/services/reviews.server.ts` | The "never hide/delete" guarantee is enforced here, once, for every caller |
-| Storefront widget data | `app/routes/apps.proxy.tsx` + `apps.proxy.submit.tsx` | Reached via Shopify's App Proxy; every request's HMAC signature is verified server-side (`app/utils/app-proxy.server.ts`) before touching the database |
-| Moderation panel | `app/routes/app.reviews.tsx` | Full, unfiltered review list — never capped by plan |
-| CSV export | `app/routes/app.reviews.export.tsx` | Available on every plan by design (data portability is the differentiator, not a paid perk) |
-| Post-purchase emails | `app/routes/webhooks.orders.paid.tsx` schedules, `app/routes/cron.send-review-requests.tsx` sends | Sending is decoupled from the webhook so a slow/failing email provider never blocks order processing |
-| GDPR compliance | `app/routes/webhooks.customers.data_request.tsx`, `webhooks.customers.redact.tsx`, `webhooks.shop.redact.tsx` | Mandatory for a public Shopify app; note this is legally-mandated deletion, a different thing from the plan-based guarantee above |
+**Billing** · Shopify Billing API for the Free/Pro subscription
+
+**Storefront widget** · Theme App Extension in plain Liquid and vanilla JS, no build step
+
+**Photos** · Supabase Storage, same project as the database
+
+**Email** · Resend, for post-purchase review requests
+
+**Hosting** · Render
+
+No AI anywhere in the core product. That is a deliberate product decision, not a gap.
+
+---
+
+## Architecture
+
+**Plan definitions and price** live in app/config/plans.server.ts. Single source of truth, and the price is an environment variable rather than a hardcoded constant.
+
+**The shop's plan is cached** on the Shop model. The storefront widget cannot afford an Admin API call per page view.
+
+**Plan reconciliation** in app/services/billing.server.ts self-heals from Shopify's Billing API on every admin page load, so a missed webhook never leaves a merchant on the wrong plan.
+
+**The never-hide guarantee is enforced once**, in app/services/reviews.server.ts, for every caller. It is not a rule scattered across route handlers.
+
+**Storefront data** is reached through Shopify's App Proxy. Every request's HMAC signature is verified server-side in app/utils/app-proxy.server.ts before anything touches the database.
+
+**Post-purchase emails** are scheduled by the orders/paid webhook and sent by a separate cron route. Sending is decoupled from the webhook so a slow or failing email provider never blocks order processing.
+
+**GDPR compliance** webhooks handle the three mandatory topics for public Shopify apps. This is legally mandated deletion, a different thing from the plan-based guarantee above.
+
+**Scheduled jobs** run on GitHub Actions cron rather than a dedicated worker process, which keeps the whole thing inside a hobby-tier budget.
+
+---
 
 ## Local setup
 
-1. Create a free Postgres database (Neon or Supabase) and copy its
-   connection string.
-2. `cp .env.example .env` and fill in `DATABASE_URL`. Leave
-   `SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET` empty for now.
-3. `npm install`
-4. `npm run config:link` — logs in via browser, links this code to an app
-   in your Partners account, and fills in `shopify.app.toml` + your `.env`.
-5. `npx prisma migrate dev --name init` — creates the database schema. This
-   is the **first real migration**; nothing has been applied yet against a
-   live database at the time of writing.
-6. `npm run dev` — starts the app and gives you a tunnel URL + a link to
-   install it on your development store (`keepreviews-dev.myshopify.com`).
+Create a Postgres database. For local development a container keeps test data fully separate from production. Then copy .env.example to .env, fill in DATABASE_URL, and run:
 
-## Deploying (target: $20-50/month all-in)
+    npm install
+        npm run config:link
+            npx prisma migrate deploy
+                npm run dev
 
-- **App server**: Railway or Fly.io free/hobby tier.
-- **Database**: Neon or Supabase free tier (both offer a free Postgres
-  instance large enough for an early-stage app).
-- **Emails**: Resend free tier (100/day, no credit card).
-- **Scheduled job**: `.github/workflows/send-review-requests.yml` — a free
-  GitHub Actions cron, since there's no budget for a dedicated worker
-  process. Needs two repo secrets: `APP_URL` and `CRON_SECRET` (must match
-  the `CRON_SECRET` env var on the deployed app).
+                config:link connects this code to an app in your Partners account and fills in the Shopify keys. npm run dev gives you a tunnel URL and an install link for your development store.
 
-## What's built vs. what's next
+                Every environment variable is documented inline in .env.example.
 
-Built: OAuth install, Postgres schema, Free/Pro billing with self-healing
-sync, moderation panel, CSV export (both plans), storefront widget (theme
-app extension) with submission form, photos gated to Pro, widget
-customization gated to Pro, post-purchase email scheduling + sending,
-mandatory GDPR webhooks.
+                ---
 
-Not done yet (needs a real Partners app + dev store to test against, which
-is an interactive, browser-driven step):
+                ## Status
 
-- Running `npm run config:link` and `npm run dev` against the real
-  `keepreviews-dev.myshopify.com` store to verify the OAuth flow and theme
-  extension end-to-end.
-- Provisioning the actual Neon/Supabase database and running the first
-  migration.
-- Deciding a final Pro price (currently a placeholder `$9.99` in
-  `.env.example`, easy to change without touching code).
-- Pricing/App Store listing copy, screenshots, and the actual submission
-  for review.
+                Deployed and running. Built and live: OAuth install, Postgres schema, Free/Pro billing with self-healing sync, moderation panel, CSV export on both plans, storefront widget with submission form, photo uploads and widget customization gated to Pro, post-purchase review request emails, low-storage ops alerting, and the mandatory GDPR webhooks.
+
+                Shopify granted protected customer data access, so the orders/paid and orders/cancelled topics are active.
+
+                Still ahead: final Pro pricing, App Store listing copy and screenshots, and submission for review.
+
+                ---
+
+                ## License
+
+                MIT
+
+                Built by **Manuel Sebastián Cetre** · [GitHub](https://github.com/cetremore26) · cetremore@gmail.com
+                
