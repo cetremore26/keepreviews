@@ -42,11 +42,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session, billing } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
-  const appUrl = process.env.SHOPIFY_APP_URL || "";
 
   if (intent === "upgrade") {
     // billing.request() throws a redirect Response by design.
-    return requestProSubscription(billing, appUrl);
+    return requestProSubscription(billing, session.shop);
   }
 
   if (intent === "downgrade") {

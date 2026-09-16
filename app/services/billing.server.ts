@@ -44,14 +44,19 @@ export async function syncShopPlanFromShopify(
   });
 }
 
-export async function requestProSubscription(
-  billing: Billing,
-  appUrl: string,
-) {
+export async function requestProSubscription(billing: Billing, shop: string) {
+  // Billing approval is a top-level redirect that leaves the embedded
+  // iframe. Returning to the raw app URL lands the browser on a bare
+  // top-level request with no shop/host context, which shopify-app-remix
+  // can't resolve to a session — it falls back to the manual /auth/login
+  // domain form. Returning through admin.shopify.com re-enters the
+  // embedded app with that context intact. See Shopify's billing.request
+  // docs, "Using a custom return URL".
+  const storeHandle = shop.replace(/\.myshopify\.com$/, "");
   return billing.request({
     plan: PRO_BILLING_PLAN,
     isTest: process.env.NODE_ENV !== "production",
-    returnUrl: `${appUrl}/app/pricing`,
+    returnUrl: `https://admin.shopify.com/store/${storeHandle}/apps/${process.env.SHOPIFY_API_KEY}/app/pricing`,
   });
 }
 
