@@ -25,9 +25,17 @@ export async function syncShopPlanFromShopify(
   domain: string,
   billing: Billing,
 ) {
+  // isTest here is a filter, not an environment switch: shopify-api's
+  // billing.check() only counts subscriptions where `isTest || !sub.test`.
+  // Shopify silently creates test-flagged subscriptions for some shops
+  // (e.g. Shopify's own app-review store) even when we request a real
+  // charge — passing `false` here would make an approved, active
+  // subscription invisible and flip the shop straight back to Free right
+  // after approval. Whether a subscription is test or real only affects
+  // billing bookkeeping, not whether the merchant should see Pro.
   const check = await billing.check({
     plans: [PRO_BILLING_PLAN],
-    isTest: process.env.NODE_ENV !== "production",
+    isTest: true,
   });
 
   if (check.hasActivePayment) {
