@@ -12,6 +12,47 @@ import type { ImportMarketplace } from "@prisma/client";
 
 export type PlanId = "FREE" | "PRO";
 
+/** Sources that mean "a merchant is moving their own reviews out of another
+ *  Shopify app". Free on every plan, on purpose: a merchant leaving Judge.me
+ *  or Loox will not pay to find out whether the escape works, and the app
+ *  they are leaving lets them import for free. This is acquisition cost, not
+ *  product.
+ *
+ *  Only sources whose CSV format has actually been verified belong here.
+ *  Listing an app we have not tested turns a promise into a broken upload on
+ *  the merchant's first try, which is precisely the failure this feature
+ *  exists to fix — the generic OTHER option covers the rest honestly.
+ *  Unverified values (STAMPED, FERA, ALI_REVIEWS, YOTPO, OKENDO) exist in
+ *  the Prisma enum so they can be switched on without a migration, the day
+ *  someone runs a real export through the importer. */
+export const MIGRATION_SOURCES: ImportMarketplace[] = [
+  "JUDGE_ME",
+  "LOOX",
+  "OTHER",
+];
+
+/** Catalog imports — the dropshipping case. These stay plan-gated: they are
+ *  a product feature, not someone rescuing their own data. */
+const MARKETPLACE_SOURCES: ImportMarketplace[] = [
+  "ALIEXPRESS",
+  "AMAZON",
+  "ETSY",
+  "SHOPEE",
+];
+
+/** Anti-abuse ceiling on stored imported reviews for the Free plan. This is
+ *  NOT a conversion lever and must never be set to a number a real merchant
+ *  can reach: the largest migration we expect (years of reviews on a big
+ *  store) is in the thousands. It exists so a free install cannot be used as
+ *  unbounded text storage, and it is deliberately a number rather than null
+ *  so the cap-enforcement path in review-import.server.ts stays live and
+ *  exercised instead of rotting as dead code behind a condition nothing
+ *  meets.
+ *
+ *  Photos are the expensive part and are already off on Free
+ *  (photosInReviews: false), so what this bounds is plain text. */
+const FREE_IMPORT_STORAGE_CEILING = 50_000;
+
 export interface PlanDefinition {
   id: PlanId;
   name: string;
@@ -38,7 +79,16 @@ export interface PlanDefinition {
     /** Cap on total reviews with source=IMPORTED this shop may hold. null =
      *  unlimited. Like maxDisplayedReviews, this only ever limits *new*
      *  imports going forward — never deletes or hides rows already
-     *  imported, including after a downgrade. */
+     *  imported, including after a downgrade.
+     *
+     *  On Free this is an abuse ceiling set far above any real migration
+     *  (see FREE_IMPORT_STORAGE_CEILING), not a paywall. It used to be 150,
+     *  which meant a merchant arriving with 800 reviews from another app got
+     *  650 of them rejected with "limit reached" — a review app refusing to
+     *  keep someone's reviews, which is the exact behaviour this product
+     *  sells itself as the alternative to. maxDisplayedReviews is what
+     *  drives upgrades, and it does it honestly: everything is stored,
+     *  20 are shown. */
     maxImportedReviewsTotal: number | null;
   };
 }
@@ -57,13 +107,8 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       widgetCustomization: false,
       moderationPanel: true,
       csvExport: true,
-      importMarketplaces: ["ALIEXPRESS"],
-      // Matches the most generous free tier we found among competitors
-      // (Ali Reviews, ~30 reviews x 5 products) — see
-      // mineria_willingness_to_pay.md section 5.4. Not the real conversion
-      // lever (maxDisplayedReviews already caps what's shown per product on
-      // Free); this exists to bound storage/abuse, not to drive upgrades.
-      maxImportedReviewsTotal: 150,
+      importMarketplaces: ["ALIEXPRESS", ...MIGRATION_SOURCES],
+      maxImportedReviewsTotal: FREE_IMPORT_STORAGE_CEILING,
     },
   },
   PRO: {
@@ -77,7 +122,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       widgetCustomization: true,
       moderationPanel: true,
       csvExport: true,
-      importMarketplaces: ["ALIEXPRESS", "AMAZON", "ETSY", "SHOPEE"],
+      importMarketplaces: [...MARKETPLACE_SOURCES, ...MIGRATION_SOURCES],
       maxImportedReviewsTotal: null,
     },
   },

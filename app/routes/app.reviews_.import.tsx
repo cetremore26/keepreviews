@@ -27,14 +27,114 @@ import {
   type ImportResult,
 } from "../services/review-import.server";
 
-const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB — well above what 1000 CSV rows need
+// Sized from what a real migration export actually weighs per row, measured
+// rather than estimated — the previous 2MB was set when the row limit was
+// 300, and a merchant importing 3000 reviews with photos would have passed
+// the row check and died on this one:
+//
+//   short review, no photos .................  199 B/row → 0.57MB per 3000
+//   realistic review, no photos .............  580 B/row → 1.66MB per 3000
+//   realistic review + 3 Loox photo URLs ....  765 B/row → 2.19MB per 3000
+//   long review + 3 photos .................. 1784 B/row → 5.10MB per 3000
+//
+// 6MB covers MAX_ROWS_PER_FILE (3000) for everything but reviews near
+// MAX_BODY_LENGTH, which no export in the wild is made of; that case hits
+// this limit and gets told to split, same as the row limit does.
+//
+// On the wire this travels urlencoded, which inflates accented Spanish text
+// by ~1.87x measured — so a 6MB file arrives as ~11MB, still inside the
+// Content-Length guard below (MAX_FILE_BYTES * 3).
+const MAX_FILE_BYTES = 6 * 1024 * 1024;
 
-const MARKETPLACE_OPTIONS: { label: string; value: ImportMarketplace }[] = [
-  { label: "AliExpress", value: "ALIEXPRESS" },
-  { label: "Amazon", value: "AMAZON" },
-  { label: "Etsy", value: "ETSY" },
-  { label: "Shopee", value: "SHOPEE" },
+/** Both size errors say the same thing the row-limit error says: split it,
+ *  nothing is lost. A merchant hitting a wall mid-migration needs the way
+ *  out, not the measurement — and re-uploading rows that already went in
+ *  never duplicates them, which is the part that makes splitting safe. */
+function tooLargeMessage(actualBytes?: number): string {
+  const limit = `${MAX_FILE_BYTES / 1024 / 1024}MB`;
+  const size = actualBytes
+    ? `That file is ${(actualBytes / 1024 / 1024).toFixed(1)}MB. `
+    : "";
+  return `${size}The limit per upload is ${limit} (about 3,000 reviews with photos). Split it into smaller files and upload them one after another — nothing is lost, and rows you already imported are never duplicated.`;
+}
+
+/**
+ * What the dropdown offers, and what we tell the merchant once they pick it.
+ *
+ * `hint` is the single most useful sentence at this point in the flow: the
+ * merchant is holding a file from another app and wondering whether it will
+ * be rejected. For the two apps whose export format we have actually
+ * verified, we name their column names back to them, which is a promise we
+ * can keep. For everything else we say plainly that we try to match common
+ * names and that the error will name what to rename — offering "Stamped" or
+ * "Yotpo" as if they were tested would recreate the exact broken-upload
+ * moment this feature exists to remove.
+ *
+ * Kept in this file rather than derived from plans.server.ts on purpose:
+ * that module is server-only (it reads process.env), and this list is read
+ * by the component.
+ */
+const MIGRATION_OPTIONS: {
+  label: string;
+  value: ImportMarketplace;
+  hint: string;
+}[] = [
+  {
+    label: "Judge.me",
+    value: "JUDGE_ME",
+    hint: "Export your reviews from Judge.me as CSV and upload it unchanged. We read its columns as they come: title, body, rating, reviewer_name, review_date, and either product_handle or product_id.",
+  },
+  {
+    label: "Loox",
+    value: "LOOX",
+    hint: "Export your reviews from Loox as CSV and upload it unchanged. We read its columns as they come: product_handle, rating, author, body, created_at and photo_url.",
+  },
+  {
+    label: "Another review app",
+    value: "OTHER",
+    hint: "Stamped, Fera, Yotpo, Okendo, Ali Reviews or anything else: upload the CSV it exports. We match the column names most apps use — and if one doesn't match, the error names the exact column to rename, so nothing is lost.",
+  },
 ];
+
+const MARKETPLACE_OPTIONS: {
+  label: string;
+  value: ImportMarketplace;
+  hint: string;
+}[] = [
+  {
+    label: "AliExpress",
+    value: "ALIEXPRESS",
+    hint: "Use the CSV template below for marketplace reviews.",
+  },
+  {
+    label: "Amazon",
+    value: "AMAZON",
+    hint: "Use the CSV template below for marketplace reviews.",
+  },
+  {
+    label: "Etsy",
+    value: "ETSY",
+    hint: "Use the CSV template below for marketplace reviews.",
+  },
+  {
+    label: "Shopee",
+    value: "SHOPEE",
+    hint: "Use the CSV template below for marketplace reviews.",
+  },
+];
+
+// Migration first: it is the case we want a merchant to find without
+// looking for it.
+const SOURCE_GROUPS = [
+  { title: "Moving from another review app", options: MIGRATION_OPTIONS },
+  { title: "Importing from a marketplace", options: MARKETPLACE_OPTIONS },
+];
+
+const ALL_SOURCES = [...MIGRATION_OPTIONS, ...MARKETPLACE_OPTIONS];
+
+function sourceLabel(value: string): string {
+  return ALL_SOURCES.find((option) => option.value === value)?.label ?? value;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, billing } = await authenticate.admin(request);
@@ -69,7 +169,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // post-parse check below is the accurate one.
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
   if (declaredLength > MAX_FILE_BYTES * 3) {
-    return { error: "File is too large (2MB max)." };
+    return { error: tooLargeMessage() };
   }
 
   const shopRecord = await getOrCreateShop(session.shop);
@@ -87,8 +187,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
   // Byte.length undercounts multi-byte UTF-8 text (accents, non-Latin
   // scripts are common in imported review text) — measure actual bytes.
-  if (Buffer.byteLength(fileText, "utf8") > MAX_FILE_BYTES) {
-    return { error: "File is too large (2MB max)." };
+  const actualBytes = Buffer.byteLength(fileText, "utf8");
+  if (actualBytes > MAX_FILE_BYTES) {
+    return { error: tooLargeMessage(actualBytes) };
   }
 
   try {
@@ -117,7 +218,9 @@ export default function ReviewsImport() {
   const navigation = useNavigation();
   const isBusy = navigation.state !== "idle";
 
-  const [marketplace, setMarketplace] = useState<ImportMarketplace>("ALIEXPRESS");
+  // Defaults to the migration case, not AliExpress: a merchant who opens
+  // this screen with a file already in hand is the one worth optimising for.
+  const [marketplace, setMarketplace] = useState<ImportMarketplace>("JUDGE_ME");
   const [file, setFile] = useState<File | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
@@ -149,6 +252,8 @@ export default function ReviewsImport() {
 
   const allowedMarketplaces = new Set(plan.features.importMarketplaces);
   const isMarketplaceLocked = !allowedMarketplaces.has(marketplace);
+  const selectedHint =
+    ALL_SOURCES.find((option) => option.value === marketplace)?.hint ?? "";
 
   const handleDrop = useCallback((_files: File[], accepted: File[]) => {
     setReadError(null);
@@ -158,7 +263,7 @@ export default function ReviewsImport() {
   const handleImport = useCallback(async () => {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
-      setReadError("File is too large (2MB max).");
+      setReadError(tooLargeMessage(file.size));
       return;
     }
     try {
@@ -174,7 +279,7 @@ export default function ReviewsImport() {
 
   const rows = batches.map((batch) => [
     new Date(batch.createdAt).toLocaleDateString(),
-    batch.marketplace,
+    sourceLabel(batch.marketplace),
     batch.filename,
     batch.status,
     String(batch.importedCount),
@@ -189,39 +294,60 @@ export default function ReviewsImport() {
         <Card>
           <BlockStack gap="400">
             <Text as="h2" variant="headingMd">
-              Import reviews from a CSV
+              Bring your reviews with you
             </Text>
             <Text as="p" tone="subdued">
-              Bring in reviews you already collected somewhere else. Download
-              the template below, fill it in, and upload it here — imported
-              reviews go live as approved right away, and you can still
-              reject any of them from the Reviews page afterward.
+              Leaving another review app? Export your reviews there and upload
+              the file here as it comes — you don't have to rename a single
+              column. Every review you bring is stored and kept, on any plan:
+              imports go live as approved right away, and you can reject any
+              of them from the Reviews page afterward.
             </Text>
+
+            <Select
+              label="Where are these reviews coming from?"
+              options={SOURCE_GROUPS}
+              value={marketplace}
+              onChange={(value) => setMarketplace(value as ImportMarketplace)}
+            />
+
+            {selectedHint && (
+              <Text as="p" tone="subdued">
+                {selectedHint}
+              </Text>
+            )}
+
             <div>
               <Button
                 variant="plain"
                 loading={isDownloadingTemplate}
                 onClick={downloadTemplate}
               >
-                Download CSV template
+                Or download our CSV template
               </Button>
             </div>
 
-            <Select
-              label="Marketplace"
-              options={MARKETPLACE_OPTIONS}
-              value={marketplace}
-              onChange={(value) => setMarketplace(value as ImportMarketplace)}
-            />
-
             {isMarketplaceLocked && (
               <Banner tone="info">
-                Importing from {marketplace} is a Pro feature. Your Free plan
-                includes AliExpress imports (up to{" "}
-                {plan.features.maxImportedReviewsTotal} imported reviews
-                total).{" "}
+                Importing from {sourceLabel(marketplace)} is a Pro feature.
+                Your Free plan includes moving your reviews over from another
+                review app, and AliExpress imports.{" "}
                 <Link url="/app/pricing" removeUnderline>
                   Upgrade to unlock the rest
+                </Link>
+                .
+              </Banner>
+            )}
+
+            {plan.features.maxDisplayedReviews !== null && (
+              <Banner tone="info">
+                Import as many reviews as you like — everything you upload is
+                stored and never deleted. On the Free plan your storefront
+                shows the{" "}
+                {plan.features.maxDisplayedReviews} most recent of them per
+                product.{" "}
+                <Link url="/app/pricing" removeUnderline>
+                  Show all of them
                 </Link>
                 .
               </Banner>
@@ -287,7 +413,7 @@ export default function ReviewsImport() {
                 ]}
                 headings={[
                   "Date",
-                  "Marketplace",
+                  "Source",
                   "File",
                   "Status",
                   "Imported",

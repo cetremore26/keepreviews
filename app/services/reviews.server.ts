@@ -90,6 +90,16 @@ export async function submitReview(
  * Reviews for the storefront widget: APPROVED only, capped by plan. The cap
  * is a LIMIT on the query, never a filter that touches other rows' status —
  * everything past the cap still exists and still counts for average rating.
+ *
+ * Ordered by displayedAt, not createdAt, because a migration import writes
+ * hundreds of rows in the same second: ordering by "when it entered our
+ * database" would make the merchant's 20 visible reviews on Free an
+ * arbitrary slice of their 800, instead of their most recent ones. An
+ * imported review with no usable date in its CSV has displayedAt = NULL and
+ * sorts last (NULLS LAST) — an unknown date must not outrank a review the
+ * store actually earned today. Ties fall back to createdAt and then to id,
+ * so the order is stable between requests rather than whatever the database
+ * happens to return.
  */
 export async function listReviewsForWidget(
   shopId: string,
@@ -101,7 +111,11 @@ export async function listReviewsForWidget(
   const [reviews, aggregate] = await Promise.all([
     db.review.findMany({
       where: { shopId, productId, status: "APPROVED" },
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { displayedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
       take: plan.features.maxDisplayedReviews ?? undefined,
       include: { photos: true },
     }),

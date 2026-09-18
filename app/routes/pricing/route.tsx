@@ -167,6 +167,10 @@ export default function Pricing() {
                 Up to {freeMaxDisplayedReviews} displayed reviews per product
               </Feature>
               <Feature>Basic widget, no customization</Feature>
+              <Feature>
+                Bring your reviews over from Judge.me, Loox or any other
+                review app — unlimited, and free
+              </Feature>
               <Feature>Import reviews from AliExpress</Feature>
               <Feature>Full moderation panel</Feature>
               <Feature>CSV export of all your data, anytime</Feature>
@@ -198,6 +202,10 @@ export default function Pricing() {
             <ul className={styles.features}>
               <Feature pro>
                 Show every review you've collected — no display cap
+              </Feature>
+              <Feature pro>
+                Everything on Free, including migrating in from another
+                review app
               </Feature>
               <Feature pro>
                 Import reviews from AliExpress, Amazon, Etsy &amp; Shopee

@@ -106,8 +106,8 @@ export default function Index() {
                 </InlineStack>
                 <Text as="p" variant="bodyMd">
                   {plan.id === "PRO"
-                    ? "Unlimited displayed reviews, photos, widget customization, moderation, CSV export, and import from AliExpress, Amazon, Etsy & Shopee."
-                    : `Up to ${plan.features.maxDisplayedReviews} displayed reviews on the storefront, plus full moderation, CSV export, and AliExpress import. Every review you collect is stored regardless of plan — see `}
+                    ? "Unlimited displayed reviews, photos, widget customization, moderation, CSV export, migration from another review app, and import from AliExpress, Amazon, Etsy & Shopee."
+                    : `Up to ${plan.features.maxDisplayedReviews} displayed reviews on the storefront, plus full moderation, CSV export, AliExpress import, and unlimited migration of your reviews out of Judge.me, Loox or any other review app. Every review you collect or bring is stored regardless of plan — see `}
                   {plan.id === "FREE" && (
                     <Link url="/app/pricing" removeUnderline>
                       upgrade options

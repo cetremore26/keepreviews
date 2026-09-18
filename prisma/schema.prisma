@@ -92,11 +92,28 @@ enum ReviewSource {
   IMPORTED // brought in via a merchant-uploaded CSV, see ReviewImportBatch
 }
 
+// Where an imported review originally came from. The name says
+// "marketplace" because that was the only case when it was created; it now
+// also covers the Shopify review apps a merchant migrates away from.
+// Renaming it would mean rewriting every stored value for no user-visible
+// gain, so the name stays and this comment carries the meaning.
 enum ImportMarketplace {
+  // Marketplaces — the dropshipping case: catalog reviews for a product
+  // the merchant didn't collect themselves.
   ALIEXPRESS
   AMAZON
   ETSY
   SHOPEE
+  // Shopify review apps — the migration case: reviews the merchant already
+  // owns, held by an app they are leaving. This is the acquisition path,
+  // which is why every one of these is available on the Free plan.
+  JUDGE_ME
+  LOOX
+  STAMPED
+  FERA
+  ALI_REVIEWS
+  YOTPO
+  OKENDO
   OTHER
 }
 
@@ -127,29 +144,58 @@ model Review {
   // ReviewImportBatch and review-import.server.ts.
   importMarketplace ImportMarketplace?
   importBatchId     String?
-  // sha256 of shopId+productId+marketplace+authorName+rating+body+sourceCreatedAt,
+  // sha256 of shopId+productId+authorName+rating+body+sourceCreatedAt,
   // computed at import time. Lets re-uploading the same (or an overlapping)
   // CSV never create duplicate rows — @@unique below enforces it. Postgres
   // allows unlimited NULLs in a unique column, so non-imported reviews
   // (always NULL here) are unaffected.
+  //
+  // The source app is NOT part of the hash: a merchant trying KeepReviews
+  // picks the wrong option in the dropdown and re-uploads the same file all
+  // the time, and the identity of a review is the review, not the app it
+  // was exported from.
   importDedupeKey String?
-  // Original review date on the source marketplace, display-only. Never
-  // used for sorting — createdAt (below) stays "when this row entered our
-  // database" everywhere, exactly as it does today.
+  // Original review date on the source app/marketplace, exactly as the CSV
+  // stated it. Kept raw and separate from displayedAt (below), which is the
+  // derived sort key: this field stays a faithful record of what the import
+  // file said, including staying NULL when the file said nothing usable.
   sourceCreatedAt DateTime?
   sourceReviewUrl String?
 
   // Set once, at creation. Never updated afterwards, and never cleared by
-  // plan changes — this timestamp is what "50 most relevant reviews" on the
-  // free plan is computed from (newest first), so downgrading a shop can
+  // plan changes. It means "when this row entered our database" everywhere,
+  // and nothing else: what the storefront shows first is computed from
+  // displayedAt (below), which was split out of this field when migration
+  // imports made the two meanings diverge. Downgrading a shop still can
   // never delete or reorder history, only cap how many are *displayed*.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // What the storefront widget sorts by. Set once at creation, never
+  // updated, and deliberately separate from createdAt: createdAt keeps its
+  // original contract ("when this row entered our database", never
+  // reordered by a plan change), because reshuffling a merchant's reviews
+  // behind their back is exactly what this app promises not to do.
+  //
+  // Storefront and email reviews: defaults to now(), same order as before.
+  // Imported reviews: the review's own date on the app it came from, so a
+  // migration lands in the merchant's real timeline instead of dumping 800
+  // rows onto today. Without this, every row of an import shares one
+  // createdAt and "newest first" becomes arbitrary — on Free, where only 20
+  // are displayed, the merchant would see 20 random reviews out of 800.
+  //
+  // NULL means "imported, and the CSV had no usable date". Those sort LAST,
+  // never first: an unknown date must not outrank a review the store
+  // actually earned today. They are still stored, still counted in the
+  // average, still exported — only their position is unknown, because it
+  // genuinely is.
+  displayedAt DateTime? @default(now())
 
   photos ReviewPhoto[]
 
   @@unique([shopId, importDedupeKey])
   @@index([shopId, productId, status, createdAt])
+  @@index([shopId, productId, status, displayedAt])
 }
 
 // One row per CSV a merchant uploads through /app/reviews/import. Exists so

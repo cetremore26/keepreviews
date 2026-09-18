@@ -100,6 +100,10 @@ export default function Pricing() {
                     product
                   </List.Item>
                   <List.Item>Basic widget, no customization</List.Item>
+                  <List.Item>
+                    Bring your reviews over from Judge.me, Loox or any other
+                    review app — unlimited, and free
+                  </List.Item>
                   <List.Item>Import reviews from AliExpress</List.Item>
                   <List.Item>Full moderation panel</List.Item>
                   <List.Item>CSV export of all your data, anytime</List.Item>
@@ -130,6 +134,10 @@ export default function Pricing() {
                 <List>
                   <List.Item>
                     Show every review you've collected — no display cap
+                  </List.Item>
+                  <List.Item>
+                    Everything on Free, including migrating in from another
+                    review app
                   </List.Item>
                   <List.Item>
                     Import reviews from AliExpress, Amazon, Etsy &amp; Shopee
