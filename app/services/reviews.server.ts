@@ -1,5 +1,6 @@
 import db from "../db.server";
 import { getPlan, type PlanId } from "../config/plans.server";
+import { normalizeProductId } from "../utils/product-id.server";
 import type { ReviewStatus, ReviewSource } from "@prisma/client";
 
 /**
@@ -59,7 +60,10 @@ export async function submitReview(
   if (!body) {
     throw new ReviewValidationError("Review text is required.");
   }
-  if (!input.productId) {
+  // Stored in the canonical numeric form whatever the caller sent, so this
+  // path and the import path can never disagree about what a product is.
+  const productId = normalizeProductId(input.productId);
+  if (!productId) {
     throw new ReviewValidationError("Missing product.");
   }
 
@@ -71,7 +75,7 @@ export async function submitReview(
   return db.review.create({
     data: {
       shopId: input.shopId,
-      productId: input.productId,
+      productId,
       productTitle: input.productTitle ?? null,
       rating: input.rating,
       authorName,
@@ -103,10 +107,18 @@ export async function submitReview(
  */
 export async function listReviewsForWidget(
   shopId: string,
-  productId: string,
+  rawProductId: string,
   planId: PlanId,
 ) {
   const plan = getPlan(planId);
+
+  // Same normalization as the write paths, so a GID asked for here finds
+  // what was stored. An id that isn't a Shopify product id at all matches
+  // nothing by definition — an empty answer, not an error, as before.
+  const productId = normalizeProductId(rawProductId);
+  if (!productId) {
+    return { reviews: [], averageRating: 0, totalApprovedCount: 0 };
+  }
 
   const [reviews, aggregate] = await Promise.all([
     db.review.findMany({
@@ -140,11 +152,18 @@ export async function listReviewsForAdmin(
   shopId: string,
   filter: { status?: ReviewStatus; productId?: string } = {},
 ) {
+  // A product filter that isn't a product id matches nothing, rather than
+  // being dropped — dropping it would show every review as if it were the
+  // product's.
+  const productId = filter.productId
+    ? (normalizeProductId(filter.productId) ?? filter.productId)
+    : undefined;
+
   return db.review.findMany({
     where: {
       shopId,
       ...(filter.status ? { status: filter.status } : {}),
-      ...(filter.productId ? { productId: filter.productId } : {}),
+      ...(productId ? { productId } : {}),
     },
     orderBy: { createdAt: "desc" },
     include: { photos: true },

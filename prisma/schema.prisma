@@ -128,7 +128,12 @@ model Review {
   shopId String
   shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
-  productId    String // Shopify Product GID
+  // Shopify's legacy NUMERIC product id ("9392803971322"), never the GID —
+  // that is what {{ product.id }} prints and what the storefront widget
+  // sends and queries by. Every write and lookup goes through
+  // normalizeProductId (app/utils/product-id.server.ts); do not compare this
+  // column against a GID.
+  productId    String
   productTitle String?
 
   rating      Int // 1-5, validated server-side
@@ -144,8 +149,10 @@ model Review {
   // ReviewImportBatch and review-import.server.ts.
   importMarketplace ImportMarketplace?
   importBatchId     String?
-  // sha256 of shopId+productId+authorName+rating+body+sourceCreatedAt,
-  // computed at import time. Lets re-uploading the same (or an overlapping)
+  // sha256 of shopId+productGid+authorName+rating+body+sourceCreatedAt,
+  // computed at import time. Hashed over the product's GID even though
+  // productId above is numeric: the key predates that decision and changing
+  // its input would make a re-upload duplicate everything already imported. Lets re-uploading the same (or an overlapping)
   // CSV never create duplicate rows — @@unique below enforces it. Postgres
   // allows unlimited NULLs in a unique column, so non-imported reviews
   // (always NULL here) are unaffected.
@@ -245,6 +252,12 @@ model ReviewRequest {
 
   orderId       String // Shopify Order GID
   customerEmail String
+  // Product GID, unlike Review.productId (numeric). Deliberate: it is only
+  // half of the (shop, order, product) uniqueness key and the id the Admin
+  // API lookup in webhooks.orders.paid needs. Nothing reads it back to find
+  // reviews — the emailed link is built from productHandle below. If
+  // completedAt is ever set by matching a submitted review to its request,
+  // run this through normalizeProductId first.
   productId     String
   productTitle  String?
   // Storefront URL slug, fetched from the Admin API when this row is

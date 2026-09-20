@@ -216,25 +216,6 @@ export function composeBody(title: string, body: string, maxLength: number): str
   return combined.slice(0, maxLength);
 }
 
-/** Shopify legacy numeric product id, from either a bare number or a GID.
- *  Null for anything else — never interpolate an unvalidated CSV value into
- *  a GID, same rule as VALID_HANDLE in review-import.server.ts.
- *
- *  This assumes the file's product id column holds a SHOPIFY product id.
- *  Judge.me's documented import format accepts one, but we have not
- *  verified against a real export that its exports emit Shopify's id rather
- *  than an internal one. A wrong id resolves to nothing and the row reports
- *  "product not found", which is why this is safe to ship ahead of that
- *  check: it degrades to today's behaviour, never to a review landing on
- *  the wrong product. */
-export function extractLegacyProductId(raw: string): string | null {
-  const value = raw.trim();
-  if (/^\d{1,20}$/.test(value)) return value;
-
-  const gidMatch = value.match(/^gid:\/\/shopify\/Product\/(\d{1,20})$/);
-  return gidMatch ? gidMatch[1] : null;
-}
-
 /** Dates as the exports write them. new Date() covers ISO-8601 and Loox's
  *  YYYY-MM-DD. DD/MM/YYYY is deliberately NOT guessed at: 03/04/2025 is two
  *  different days depending on who exported it, and nothing in the value

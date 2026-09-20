@@ -10,4 +10,9 @@ module.exports = {
   globals: {
     shopify: "readonly"
   },
+  settings: {
+    // The tests run on vitest, so there is no jest package for the jest
+    // plugin (pulled in by the Remix config above) to detect a version from.
+    jest: { version: 29 },
+  },
 };

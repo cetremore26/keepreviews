@@ -5,11 +5,11 @@ import db from "../db.server";
 import { getPlan, type PlanId } from "../config/plans.server";
 import { MAX_BODY_LENGTH, MAX_NAME_LENGTH } from "./reviews.server";
 import { logAudit } from "../utils/audit-log.server";
+import { normalizeProductId, toProductGid } from "../utils/product-id.server";
 import {
   composeBody,
   computeDedupeKey,
   describeMissingColumns,
-  extractLegacyProductId,
   mapCsvHeaders,
   normalizeRating,
   parseOptionalDate,
@@ -190,6 +190,10 @@ export function parseReviewCsv(fileText: string): CsvParseResult {
 const VALID_HANDLE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 interface ResolvedProduct {
+  /** Canonical numeric id (see normalizeProductId), never the Admin API's
+   *  GID: this is what ends up in Review.productId, and the storefront
+   *  widget looks reviews up by the number. Both resolvers below normalize
+   *  before returning, so nothing downstream can store a GID. */
   id: string;
   title: string | null;
 }
@@ -231,8 +235,9 @@ async function resolveProductHandles(
       );
       const { data } = await response.json();
       for (const node of data?.products?.nodes ?? []) {
-        if (node?.handle) {
-          resolved.set(node.handle, { id: node.id, title: node.title ?? null });
+        const productId = normalizeProductId(node?.id);
+        if (node?.handle && productId) {
+          resolved.set(node.handle, { id: productId, title: node.title ?? null });
         }
       }
     } catch (error) {
@@ -250,12 +255,20 @@ async function resolveProductHandles(
 
 /** Same idea for files that identify products by id instead of handle —
  *  Judge.me can export one without the other. The CSV carries the legacy
- *  numeric id, which has to become a GID before the Admin API will take it;
- *  extractLegacyProductId has already proved the value is nothing but
- *  digits, so nothing unvalidated reaches the interpolation below.
+ *  numeric id (or a GID), which has to become a GID before the Admin API
+ *  will take it; normalizeProductId has already proved the value is nothing
+ *  but digits, so nothing unvalidated reaches toProductGid.
  *
- *  Keyed by the numeric id as it appeared in the file, so the caller can
- *  look a row's raw value straight up. */
+ *  Keyed by the canonical numeric id, so the caller can look a row's value
+ *  straight up once it has normalized it the same way.
+ *
+ *  This assumes the file's product id column holds a SHOPIFY product id.
+ *  Judge.me's documented import format accepts one, but we have not
+ *  verified against a real export that its exports emit Shopify's id rather
+ *  than an internal one. A wrong id resolves to nothing and the row reports
+ *  "product not found", which is why this is safe to ship ahead of that
+ *  check: it degrades to a row error, never to a review landing on the
+ *  wrong product. */
 async function resolveProductsByLegacyId(
   admin: { graphql: (query: string, opts?: { variables?: Record<string, unknown> }) => Promise<Response> },
   legacyIds: string[],
@@ -265,7 +278,7 @@ async function resolveProductsByLegacyId(
 
   for (let i = 0; i < uniqueIds.length; i += PRODUCT_LOOKUP_BATCH_SIZE) {
     const chunk = uniqueIds.slice(i, i + PRODUCT_LOOKUP_BATCH_SIZE);
-    const gids = chunk.map((id) => `gid://shopify/Product/${id}`);
+    const gids = chunk.map(toProductGid);
 
     try {
       const response = await admin.graphql(
@@ -286,9 +299,9 @@ async function resolveProductsByLegacyId(
         // products, so a bad id in the file resolves to nothing and its row
         // reports "product not found" — it can never land on another row's
         // product.
-        const numericId = String(node?.id ?? "").split("/").pop();
-        if (node?.id && numericId) {
-          resolved.set(numericId, { id: node.id, title: node.title ?? null });
+        const productId = normalizeProductId(node?.id);
+        if (productId) {
+          resolved.set(productId, { id: productId, title: node.title ?? null });
         }
       }
     } catch (error) {
@@ -363,7 +376,7 @@ export async function importReviewsFromCsv(params: {
     resolveProductsByLegacyId(
       params.admin,
       rows
-        .map((r) => extractLegacyProductId(r.productId))
+        .map((r) => normalizeProductId(r.productId))
         .filter((id): id is string => id !== null),
     ),
   ]);
@@ -395,8 +408,8 @@ export async function importReviewsFromCsv(params: {
     const product =
       productsByHandle.get(row.productHandle) ??
       (() => {
-        const legacyId = extractLegacyProductId(row.productId);
-        return legacyId ? productsByLegacyId.get(legacyId) : undefined;
+        const productId = normalizeProductId(row.productId);
+        return productId ? productsByLegacyId.get(productId) : undefined;
       })();
 
     if (!product) {
@@ -432,9 +445,14 @@ export async function importReviewsFromCsv(params: {
     const authorName = (row.authorName || "Anonymous").slice(0, MAX_NAME_LENGTH);
     const sourceCreatedAt = parseOptionalDate(row.reviewDate);
 
+    // The hash input stays the GID form it was computed from before
+    // Review.productId became numeric. It is an opaque identity, not a
+    // stored column, and changing what goes into it would give every review
+    // already imported a new key — re-uploading the same file would then
+    // insert all of them again instead of skipping them as duplicates.
     const dedupeKey = computeDedupeKey({
       shopId: params.shopId,
-      productId: product.id,
+      productId: toProductGid(product.id),
       authorName,
       rating,
       body,
