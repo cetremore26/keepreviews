@@ -198,22 +198,44 @@ interface ResolvedProduct {
   title: string | null;
 }
 
+/** What a product lookup learned. `failed` holds the keys whose Admin API
+ *  call did not succeed, so the caller can tell "Shopify says this product
+ *  doesn't exist" (a problem in the merchant's file) apart from "we never
+ *  got an answer" (throttling, an outage, a request refused by the app's IP
+ *  allowlist). Reporting the second as "product not found" would send the
+ *  merchant hunting for a mistake their file doesn't have. */
+interface ProductLookup {
+  resolved: Map<string, ResolvedProduct>;
+  failed: Set<string>;
+}
+
+/** Reads a GraphQL response body, throwing when it carries no data. A
+ *  top-level `errors` array with null data is a failed call even though the
+ *  HTTP request itself succeeded. */
+async function readGraphqlData(response: Response): Promise<any> {
+  const body = await response.json();
+  if (!body?.data) {
+    const message = body?.errors?.[0]?.message ?? "response had no data";
+    throw new Error(`Admin API query failed: ${message}`);
+  }
+  return body.data;
+}
+
 /** Resolves the unique product handles referenced by the CSV in batches of
  *  PRODUCT_LOOKUP_BATCH_SIZE, so a 1000-row file with 40 distinct products
  *  costs ~1 Admin API call, not up to 1000. A chunk whose Admin API call
- *  fails (throttling, transient 5xx) is caught and simply resolves none of
- *  its handles rather than throwing — the caller already treats an
- *  unresolved handle as a normal per-row "product not found" error, so a
- *  transient API failure degrades to some rows failing, never the whole
- *  import crashing. */
+ *  fails is caught rather than thrown: its handles land in `failed`, and the
+ *  caller reports those rows as a lookup failure. One bad call costs some
+ *  rows, never the whole import. */
 async function resolveProductHandles(
   admin: { graphql: (query: string, opts?: { variables?: Record<string, unknown> }) => Promise<Response> },
   handles: string[],
-): Promise<Map<string, ResolvedProduct>> {
+): Promise<ProductLookup> {
   const uniqueHandles = [
     ...new Set(handles.filter((h) => VALID_HANDLE.test(h))),
   ];
   const resolved = new Map<string, ResolvedProduct>();
+  const failed = new Set<string>();
 
   for (let i = 0; i < uniqueHandles.length; i += PRODUCT_LOOKUP_BATCH_SIZE) {
     const chunk = uniqueHandles.slice(i, i + PRODUCT_LOOKUP_BATCH_SIZE);
@@ -233,8 +255,8 @@ async function resolveProductHandles(
         }`,
         { variables: { query: queryString, first: chunk.length } },
       );
-      const { data } = await response.json();
-      for (const node of data?.products?.nodes ?? []) {
+      const data = await readGraphqlData(response);
+      for (const node of data.products?.nodes ?? []) {
         const productId = normalizeProductId(node?.id);
         if (node?.handle && productId) {
           resolved.set(node.handle, { id: productId, title: node.title ?? null });
@@ -245,12 +267,11 @@ async function resolveProductHandles(
         `Product handle lookup failed for a chunk of ${chunk.length} handles:`,
         error,
       );
-      // Leave this chunk's handles unresolved — rows referencing them will
-      // surface as "product not found" errors instead of aborting the batch.
+      for (const handle of chunk) failed.add(handle);
     }
   }
 
-  return resolved;
+  return { resolved, failed };
 }
 
 /** Same idea for files that identify products by id instead of handle —
@@ -272,9 +293,10 @@ async function resolveProductHandles(
 async function resolveProductsByLegacyId(
   admin: { graphql: (query: string, opts?: { variables?: Record<string, unknown> }) => Promise<Response> },
   legacyIds: string[],
-): Promise<Map<string, ResolvedProduct>> {
+): Promise<ProductLookup> {
   const uniqueIds = [...new Set(legacyIds)];
   const resolved = new Map<string, ResolvedProduct>();
+  const failed = new Set<string>();
 
   for (let i = 0; i < uniqueIds.length; i += PRODUCT_LOOKUP_BATCH_SIZE) {
     const chunk = uniqueIds.slice(i, i + PRODUCT_LOOKUP_BATCH_SIZE);
@@ -293,8 +315,8 @@ async function resolveProductsByLegacyId(
         }`,
         { variables: { ids: gids } },
       );
-      const { data } = await response.json();
-      for (const node of data?.nodes ?? []) {
+      const data = await readGraphqlData(response);
+      for (const node of data.nodes ?? []) {
         // nodes() returns null in-place for ids that don't exist or aren't
         // products, so a bad id in the file resolves to nothing and its row
         // reports "product not found" — it can never land on another row's
@@ -309,10 +331,11 @@ async function resolveProductsByLegacyId(
         `Product id lookup failed for a chunk of ${chunk.length} ids:`,
         error,
       );
+      for (const id of chunk) failed.add(id);
     }
   }
 
-  return resolved;
+  return { resolved, failed };
 }
 
 /** A row that passed validation and is ready to insert. */
@@ -405,14 +428,24 @@ export async function importReviewsFromCsv(params: {
   const seenKeys = new Set<string>();
 
   for (const row of rows) {
+    const legacyId = normalizeProductId(row.productId);
     const product =
-      productsByHandle.get(row.productHandle) ??
-      (() => {
-        const productId = normalizeProductId(row.productId);
-        return productId ? productsByLegacyId.get(productId) : undefined;
-      })();
+      productsByHandle.resolved.get(row.productHandle) ??
+      (legacyId ? productsByLegacyId.resolved.get(legacyId) : undefined);
 
     if (!product) {
+      const lookupFailed =
+        productsByHandle.failed.has(row.productHandle) ||
+        (legacyId !== null && productsByLegacyId.failed.has(legacyId));
+      if (lookupFailed) {
+        errors.push({
+          rowNumber: row.rowNumber,
+          reason:
+            "We couldn't reach Shopify to look up this row's product, so it wasn't imported. Your file is fine — upload it again in a few minutes; reviews already imported will be skipped as duplicates.",
+        });
+        continue;
+      }
+
       const reference = row.productHandle || row.productId || "(empty)";
       errors.push({
         rowNumber: row.rowNumber,
