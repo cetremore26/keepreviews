@@ -59,6 +59,8 @@ config:link connects this code to an app in your Partners account and fills in t
 
 Every environment variable is documented inline in .env.example.
 
+Never commit real review exports or imports from a merchant's store: they hold their customers' names and reviews. Test data must be synthetic (invented names, example.com addresses); CSV files are gitignored except under tests/fixtures/.
+
 ---
 
 ## Status

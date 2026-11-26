@@ -11,9 +11,13 @@ node_modules
 /prisma/dev.sqlite-journal
 database.sqlite
 
-.env
-.env.*
+.env*
 !.env.example
+
+# Review exports and imports can hold real merchants' customer data. Only
+# synthetic fixtures (example.com addresses, invented names) are committed.
+*.csv
+!tests/fixtures/**/*.csv
 
 # We use npm — package-lock.json IS committed on purpose (npm ci in CI/
 # Docker needs it). Only the other package managers' lockfiles are ignored.
