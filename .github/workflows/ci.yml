@@ -14,3 +14,29 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npx tsc --noEmit
+
+  # The repo is public, so every commit on every branch is scanned, not just
+  # the diff: a secret removed in a later commit is still in the history.
+  secret-scan:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.21.2
+      # sha256 of gitleaks_8.21.2_linux_x64.tar.gz, from the release's
+      # checksums file. Pinned here so a swapped release asset fails the job.
+      GITLEAKS_SHA256: 5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (checksum-verified)
+        run: |
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSLf -o "$RUNNER_TEMP/$tarball" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$tarball"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/$tarball" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan full history
+        # --redact keeps any finding's value out of the (public) job log.
+        run: |
+          "$RUNNER_TEMP/gitleaks" git . --log-opts="--all" --redact \
+            --exit-code 1 --no-banner --verbose

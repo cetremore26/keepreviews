@@ -51,29 +51,30 @@ No AI anywhere in the core product. That is a deliberate product decision, not a
 Create a Postgres database. For local development a container keeps test data fully separate from production. Then copy .env.example to .env, fill in DATABASE_URL, and run:
 
     npm install
-        npm run config:link
-            npx prisma migrate deploy
-                npm run dev
+    npm run config:link
+    npx prisma migrate deploy
+    npm run dev
 
-                config:link connects this code to an app in your Partners account and fills in the Shopify keys. npm run dev gives you a tunnel URL and an install link for your development store.
+config:link connects this code to an app in your Partners account and fills in the Shopify keys. npm run dev gives you a tunnel URL and an install link for your development store.
 
-                Every environment variable is documented inline in .env.example.
+Every environment variable is documented inline in .env.example.
 
-                ---
+Never commit real review exports or imports from a merchant's store: they hold their customers' names and reviews. Test data must be synthetic (invented names, example.com addresses); CSV files are gitignored except under tests/fixtures/.
 
-                ## Status
+---
 
-                Deployed and running. Built and live: OAuth install, Postgres schema, Free/Pro billing with self-healing sync, moderation panel, CSV export on both plans, storefront widget with submission form, photo uploads and widget customization gated to Pro, post-purchase review request emails, low-storage ops alerting, and the mandatory GDPR webhooks.
+## Status
 
-                Shopify granted protected customer data access, so the orders/paid and orders/cancelled topics are active.
+Deployed and running. Built and live: OAuth install, Postgres schema, Free/Pro billing with self-healing sync, moderation panel, CSV export on both plans, storefront widget with submission form, photo uploads and widget customization gated to Pro, post-purchase review request emails, low-storage ops alerting, and the mandatory GDPR webhooks.
 
-                Still ahead: final Pro pricing, App Store listing copy and screenshots, and submission for review.
+Shopify granted protected customer data access, so the orders/paid and orders/cancelled topics are active.
 
-                ---
+Still ahead: final Pro pricing, App Store listing copy and screenshots, and submission for review.
 
-                ## License
+---
 
-                MIT
+## License
 
-                Built by **Manuel Sebastián Cetre** · [GitHub](https://github.com/cetremore26) · cetremore@gmail.com
-                
+Copyright (c) 2026 Manuel Cetre. All rights reserved. This code is shown for portfolio purposes only; no permission is granted to use, copy or distribute it. See [LICENSE](LICENSE).
+
+Built by **Manuel Sebastián Cetre** · [GitHub](https://github.com/cetremore26) · cetremore@gmail.com
